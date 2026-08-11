@@ -1,0 +1,467 @@
+import 'dart:async';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../core/theme.dart';
+import '../../state/tracker_controller.dart';
+import '../widgets/common.dart';
+
+class TodayScreen extends StatefulWidget {
+  const TodayScreen({super.key, required this.controller});
+  final TrackerController controller;
+  @override
+  State<TodayScreen> createState() => _TodayScreenState();
+}
+
+class _TodayScreenState extends State<TodayScreen> {
+  late Timer timer;
+  DateTime now = DateTime.now();
+  String? celebration;
+  bool dayCelebration = false;
+  @override
+  void initState() {
+    super.initState();
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  Future<void> completeTask(Map<String, Object?> task) async {
+    final before = widget.controller.dailyScore;
+    await widget.controller.completeTask(task['id'] as int);
+    if (task['status'] != 'COMPLETED')
+      showCelebration(
+        task['title'] as String,
+        before < 100 && widget.controller.dailyScore == 100,
+      );
+  }
+
+  void showCelebration(String title, bool wholeDay) {
+    setState(() {
+      celebration = title;
+      dayCelebration = wholeDay;
+    });
+    Future.delayed(Duration(milliseconds: wholeDay ? 5000 : 2400), () {
+      if (mounted) setState(() => celebration = null);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.controller;
+    final empty = c.todayTasks.isEmpty && c.todayRoutineRecords.isEmpty;
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: c.refresh,
+          child: ListView(
+            padding: pagePadding,
+            children: [
+              PageIntro(
+                eyebrow: DateFormat('EEEE, MMMM d').format(now),
+                title: 'Make today count.',
+                subtitle:
+                    'Small promises, kept consistently, become your story.',
+                trailing: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      DateFormat('HH:mm').format(now),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    Text(
+                      'LIVE',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: TrackerColors.coral,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      SizedBox.square(
+                        dimension: 92,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              value: c.dailyScore / 100,
+                              strokeWidth: 9,
+                              backgroundColor: Theme.of(context).dividerColor,
+                              color: TrackerColors.gold,
+                            ),
+                            Text(
+                              '${c.dailyScore}%',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontFamily: 'serif'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DAILY SCORE',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(color: TrackerColors.gold),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              '${c.completedCount} of ${c.activePlannedCount}',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Intentional recovery days are excluded.',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (empty)
+                const EmptyCard(
+                  eyebrow: 'A quiet beginning',
+                  title: 'Your day is still unwritten.',
+                  body: 'Use Quick add to give today one clear promise.',
+                )
+              else ...[
+                if (c.todayRoutineRecords.isNotEmpty)
+                  Text(
+                    'ROUTINES',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: TrackerColors.muted,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                for (final record in c.todayRoutineRecords)
+                  _routineCard(context, record),
+                if (c.todayTasks.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    'TASKS & EVENTS',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: TrackerColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                for (final task in c.todayTasks) _taskCard(context, task),
+              ],
+            ],
+          ),
+        ),
+        if (celebration != null)
+          Positioned.fill(
+            child: _Celebration(title: celebration!, wholeDay: dayCelebration),
+          ),
+      ],
+    );
+  }
+
+  Widget _routineCard(BuildContext context, Map<String, Object?> record) {
+    final c = widget.controller;
+    final routine = c.routineById(record['routine_id'] as int)!;
+    final skipped = record['skipped'] == 1;
+    final completed = record['completed'] == 1;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        color: skipped
+            ? (Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF233029)
+                  : const Color(0xFFF0F8F3))
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    completed
+                        ? Icons.check_circle
+                        : skipped
+                        ? Icons.self_improvement
+                        : Icons.radio_button_unchecked,
+                    color: completed
+                        ? TrackerColors.mint
+                        : skipped
+                        ? TrackerColors.gold
+                        : TrackerColors.violet,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          routine['title'] as String,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            decoration: completed
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                        Text(
+                          skipped
+                              ? 'Recovery · ${record['skip_reason']}'
+                              : '${record['completed_quantity']}/${record['target_snapshot']} ${routine['unit']} · ${routine['category']}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!skipped) ...[
+                    IconButton(
+                      onPressed: () =>
+                          c.progressRoutine(record['id'] as int, -1),
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                    Text('${record['completed_quantity']}'),
+                    IconButton(
+                      onPressed: () async {
+                        final before = c.dailyScore;
+                        await c.progressRoutine(record['id'] as int, 1);
+                        if (!completed)
+                          showCelebration(
+                            routine['title'] as String,
+                            before < 100 && c.dailyScore == 100,
+                          );
+                      },
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                  ] else
+                    TextButton(
+                      onPressed: () =>
+                          c.progressRoutine(record['id'] as int, 0),
+                      child: const Text('Restore'),
+                    ),
+                ],
+              ),
+              if (!completed && !skipped)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _recovery(context, record['id'] as int),
+                    icon: const Icon(Icons.spa_outlined, size: 18),
+                    label: const Text('Recovery day'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _taskCard(BuildContext context, Map<String, Object?> task) {
+    final c = widget.controller;
+    final done = task['status'] == 'COMPLETED';
+    final items = c.subtasksFor(task['id'] as int);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => completeTask(task),
+                    icon: Icon(
+                      done
+                          ? Icons.check_circle
+                          : task['item_type'] == 'EVENT'
+                          ? Icons.event_outlined
+                          : Icons.radio_button_unchecked,
+                      color: done ? TrackerColors.mint : TrackerColors.gold,
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          task['title'] as String,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            decoration: done
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                        Text(
+                          '${task['item_type']} · ${task['all_day'] == 1 ? 'All day' : task['start_time'] ?? task['deadline']} · ${task['estimated_minutes']} min',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (v) {
+                      if (v == 'archive') c.archiveTask(task['id'] as int);
+                      if (v == 'skip')
+                        c.resolveTask(
+                          task['id'] as int,
+                          'SKIPPED',
+                          note: 'Intentionally skipped',
+                        );
+                      if (v == 'drop')
+                        c.resolveTask(task['id'] as int, 'DROPPED');
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'skip',
+                        child: Text('Skip intentionally'),
+                      ),
+                      PopupMenuItem(value: 'drop', child: Text('Drop')),
+                      PopupMenuItem(value: 'archive', child: Text('Archive')),
+                    ],
+                  ),
+                ],
+              ),
+              if (items.isNotEmpty) ...[
+                const Divider(),
+                for (final item in items)
+                  CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(item['title'] as String),
+                    value: item['done'] == 1,
+                    onChanged: (_) => c.toggleSubtask(item['id'] as int),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _recovery(BuildContext context, int recordId) {
+    final reason = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose intentional recovery'),
+        content: TextField(
+          controller: reason,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Why does rest matter today?',
+            hintText: 'Recovery protects consistency.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              widget.controller.skipRoutine(
+                recordId,
+                reason.text.isEmpty ? 'Intentional recovery' : reason.text,
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Take recovery day'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Celebration extends StatelessWidget {
+  const _Celebration({required this.title, required this.wholeDay});
+  final String title;
+  final bool wholeDay;
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: ColoredBox(
+      color: Colors.black.withValues(alpha: wholeDay ? .78 : .56),
+      child: Stack(
+        children: [
+          for (var i = 0; i < (wholeDay ? 72 : 28); i++)
+            Positioned(
+              left:
+                  ((i * 37 + 11) % 100) /
+                  100 *
+                  MediaQuery.sizeOf(context).width,
+              top: ((i * 19) % 70).toDouble(),
+              child: Transform.rotate(
+                angle: i * pi / 9,
+                child: Icon(
+                  i % 3 == 0 ? Icons.circle : Icons.rectangle,
+                  size: i % 4 == 0 ? 8 : 12,
+                  color: [
+                    TrackerColors.gold,
+                    TrackerColors.cream,
+                    TrackerColors.coral,
+                    TrackerColors.violet,
+                    TrackerColors.mint,
+                  ][i % 5],
+                ),
+              ),
+            ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  wholeDay ? '✦ DAY COMPLETE ✦' : '✓ COMPLETE',
+                  style: const TextStyle(
+                    color: TrackerColors.brightGold,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  wholeDay ? 'You kept every promise today.' : title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'serif',
+                    fontSize: 34,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  wholeDay
+                      ? 'Pause for a second. This is what consistency feels like.'
+                      : 'One meaningful step is now part of your story.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFE8E1D1)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
