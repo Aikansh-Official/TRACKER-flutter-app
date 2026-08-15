@@ -199,6 +199,14 @@ void main() {
     );
     expect(reopened.weeklyReviews.single['rating'], 4);
     expect(reopened.dailyScore, 100);
+    await reopened.lock();
+    expect(reopened.unlocked, isFalse);
+    expect(
+      await reopened.login('aikansh@example.com', 'wrong-pass'),
+      'Incorrect email or password.',
+    );
+    expect(await reopened.login('aikansh@example.com', 'strong-pass'), isNull);
+    expect(reopened.unlocked, isTrue);
 
     await reopenedDatabase.db.close();
     await directory.delete(recursive: true);
@@ -313,11 +321,64 @@ void main() {
       await directory.delete(recursive: true);
     },
   );
+
+  test('smart reminders resync only when planned work changes', () async {
+    SharedPreferences.setMockInitialValues({});
+    final directory = await Directory.systemTemp.createTemp('tracker-test-');
+    final database = TrackerDatabase(
+      factory: databaseFactoryFfi,
+      databasePath: '${directory.path}${Platform.pathSeparator}tracker.db',
+    );
+    await database.open();
+    final notifications = _RecordingNotifications();
+    final controller = TrackerController(database, notifications);
+    await controller.initialize();
+
+    expect(await controller.setSmartReminders(true), isTrue);
+    expect(notifications.daySummaries, 15);
+    await controller.refresh();
+    expect(notifications.daySummaries, 15);
+
+    await controller.saveMood({
+      'date': controller.todayKey,
+      'mood': 4,
+      'energy': 3,
+      'stress': 2,
+      'focus': 4,
+      'sleep_hours': 7.5,
+      'emotions': '',
+      'factors': '',
+      'note': '',
+    });
+    expect(notifications.daySummaries, 15);
+
+    await controller.createTask({
+      'title': 'Prepare interview notes',
+      'description': '',
+      'item_type': 'TASK',
+      'scheduled_date': controller.todayKey,
+      'all_day': 1,
+      'start_time': null,
+      'priority': 'HIGH',
+      'deadline': null,
+      'estimated_minutes': 30,
+      'reminder_minutes': null,
+      'recurrence_frequency': 'NONE',
+      'recurrence_interval': 1,
+      'recurrence_weekdays': '',
+      'recurrence_end_date': null,
+    }, const []);
+    expect(notifications.daySummaries, 30);
+
+    await database.db.close();
+    await directory.delete(recursive: true);
+  });
 }
 
 class _RecordingNotifications extends NotificationService {
   bool permissionGranted = true;
   int permissionRequests = 0;
+  int daySummaries = 0;
   final scheduled = <({int id, String title, String body, DateTime at})>[];
 
   @override
@@ -334,5 +395,13 @@ class _RecordingNotifications extends NotificationService {
     required DateTime at,
   }) async {
     scheduled.add((id: id, title: title, body: body, at: at));
+  }
+
+  @override
+  Future<void> scheduleDaySummary({
+    required DateTime date,
+    required List<String> unfinishedTitles,
+  }) async {
+    daySummaries++;
   }
 }

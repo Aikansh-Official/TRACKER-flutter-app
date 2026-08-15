@@ -33,6 +33,7 @@ class TrackerController extends ChangeNotifier {
   List<Map<String, Object?>> milestones = [];
   List<Map<String, Object?>> weeklyReviews = [];
   DateTime selectedDate = DateTime.now();
+  String? _lastSmartReminderFingerprint;
 
   String key(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
   String get todayKey => key(DateTime.now());
@@ -144,8 +145,45 @@ class TrackerController extends ChangeNotifier {
     goals = rows[7];
     milestones = rows[8];
     weeklyReviews = rows[9];
-    if (smartRemindersEnabled) await syncSmartDayReminders();
+    if (smartRemindersEnabled) await _syncSmartDayRemindersIfChanged();
     notifyListeners();
+  }
+
+  String _smartReminderFingerprint() => jsonEncode([
+    for (final task in tasks)
+      [task['id'], task['title'], task['scheduled_date'], task['status']],
+    for (final routine in routines)
+      [
+        routine['id'],
+        routine['title'],
+        routine['status'],
+        routine['frequency'],
+        routine['scheduled_days'],
+        routine['weekly_target'],
+        routine['start_date'],
+        routine['end_date'],
+        routine['paused_until'],
+      ],
+    for (final record in routineRecords)
+      [
+        record['id'],
+        record['routine_id'],
+        record['date'],
+        record['completed'],
+        record['skipped'],
+      ],
+  ]);
+
+  Future<void> _syncSmartDayRemindersIfChanged({bool force = false}) async {
+    final fingerprint = _smartReminderFingerprint();
+    if (!force && fingerprint == _lastSmartReminderFingerprint) return;
+    _lastSmartReminderFingerprint = fingerprint;
+    try {
+      await syncSmartDayReminders();
+    } catch (_) {
+      _lastSmartReminderFingerprint = null;
+      rethrow;
+    }
   }
 
   Future<void> _prepareToday() async {
@@ -660,9 +698,10 @@ class TrackerController extends ChangeNotifier {
       if (!allowed) return false;
       smartRemindersEnabled = true;
       await preferences.setBool('tracker-smart-reminders', true);
-      await syncSmartDayReminders();
+      await _syncSmartDayRemindersIfChanged(force: true);
     } else {
       smartRemindersEnabled = false;
+      _lastSmartReminderFingerprint = null;
       await preferences.setBool('tracker-smart-reminders', false);
       final today = DateTime.now();
       for (var offset = 0; offset < 15; offset++) {

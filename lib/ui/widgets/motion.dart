@@ -181,7 +181,7 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
 
   void _buildScene() {
     final random = Random(widget.wholeDay ? 4762026 : 476);
-    final count = widget.wholeDay ? 150 : 44;
+    final count = widget.wholeDay ? 120 : 44;
     _particles = List.generate(count, (index) {
       final fromCenter = !widget.wholeDay;
       return _ConfettiParticle(
@@ -212,12 +212,32 @@ class _CelebrationOverlayState extends State<CelebrationOverlay>
       _fireworks = const [];
       return;
     }
-    _fireworks = const [
-      _FireworkBurst(center: Offset(.22, .3), delay: .42, seed: 17),
-      _FireworkBurst(center: Offset(.74, .23), delay: 1.05, seed: 29),
-      _FireworkBurst(center: Offset(.5, .16), delay: 1.7, seed: 43),
-      _FireworkBurst(center: Offset(.83, .42), delay: 2.35, seed: 71),
-      _FireworkBurst(center: Offset(.14, .48), delay: 2.9, seed: 89),
+    _fireworks = [
+      _FireworkBurst.seeded(
+        center: const Offset(.22, .3),
+        delay: .42,
+        seed: 17,
+      ),
+      _FireworkBurst.seeded(
+        center: const Offset(.74, .23),
+        delay: 1.05,
+        seed: 29,
+      ),
+      _FireworkBurst.seeded(
+        center: const Offset(.5, .16),
+        delay: 1.7,
+        seed: 43,
+      ),
+      _FireworkBurst.seeded(
+        center: const Offset(.83, .42),
+        delay: 2.35,
+        seed: 71,
+      ),
+      _FireworkBurst.seeded(
+        center: const Offset(.14, .48),
+        delay: 2.9,
+        seed: 89,
+      ),
     ];
   }
 
@@ -390,18 +410,25 @@ class _CelebrationPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final confettiPaint = Paint();
+    final sparkPaint = Paint()..strokeCap = StrokeCap.round;
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     for (final firework in fireworks) {
-      _paintFirework(canvas, size, firework);
+      _paintFirework(canvas, size, firework, sparkPaint);
     }
     for (final particle in particles) {
-      _paintConfetti(canvas, size, particle);
+      _paintConfetti(canvas, size, particle, confettiPaint);
     }
     canvas.restore();
   }
 
-  void _paintConfetti(Canvas canvas, Size size, _ConfettiParticle particle) {
+  void _paintConfetti(
+    Canvas canvas,
+    Size size,
+    _ConfettiParticle particle,
+    Paint paint,
+  ) {
     final age = seconds - particle.delay;
     if (age < 0 || age > particle.lifetime) return;
     final dragTravel = (1 - exp(-particle.drag * age)) / particle.drag;
@@ -412,21 +439,18 @@ class _CelebrationPainter extends CustomPainter {
           .5 * particle.gravity * age * age,
     );
     final fade = (1 - age / particle.lifetime).clamp(0.0, 1.0);
-    final paint = Paint()..color = particle.color.withValues(alpha: fade);
+    paint.color = particle.color.withValues(alpha: fade);
     canvas.save();
     canvas.translate(position.dx, position.dy);
     canvas.rotate(particle.rotation + particle.angularVelocity * age);
     if (particle.round) {
       canvas.drawCircle(Offset.zero, particle.size * .45, paint);
     } else {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset.zero,
-            width: particle.size,
-            height: particle.size * .48,
-          ),
-          const Radius.circular(1.5),
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: particle.size,
+          height: particle.size * .48,
         ),
         paint,
       );
@@ -434,7 +458,12 @@ class _CelebrationPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _paintFirework(Canvas canvas, Size size, _FireworkBurst firework) {
+  void _paintFirework(
+    Canvas canvas,
+    Size size,
+    _FireworkBurst firework,
+    Paint sparkPaint,
+  ) {
     final age = seconds - firework.delay;
     final center = Offset(
       firework.center.dx * size.width,
@@ -457,31 +486,25 @@ class _CelebrationPainter extends CustomPainter {
       return;
     }
     if (age < 0 || age > 1.35) return;
-    final random = Random(firework.seed);
     final progress = age / 1.35;
     final fade = (1 - progress).clamp(0.0, 1.0);
-    for (var index = 0; index < 32; index++) {
-      final angle = (pi * 2 * index / 32) + (random.nextDouble() - .5) * .14;
-      final depth = .55 + random.nextDouble() * .75;
-      final speed = (70 + random.nextDouble() * 100) * depth;
+    for (final sparkData in firework.sparks) {
       final spark =
           center +
           Offset(
-            cos(angle) * speed * age,
-            sin(angle) * speed * age + 48 * age * age,
+            sparkData.direction.dx * sparkData.speed * age,
+            sparkData.direction.dy * sparkData.speed * age + 48 * age * age,
           );
-      final color =
-          _celebrationColors[(index + firework.seed) %
-                  _celebrationColors.length]
-              .withValues(alpha: fade * depth.clamp(0, 1));
-      final paint = Paint()
+      final color = _celebrationColors[sparkData.colorIndex].withValues(
+        alpha: fade * sparkData.depth.clamp(0, 1),
+      );
+      sparkPaint
         ..color = color
-        ..strokeWidth = 1.2 + depth * 1.6
-        ..strokeCap = StrokeCap.round;
-      final tail = spark - Offset(cos(angle), sin(angle)) * (5 + 9 * fade);
-      canvas.drawLine(tail, spark, paint);
-      if (progress > .55 && index.isEven) {
-        canvas.drawCircle(spark, 1.2 * fade, paint);
+        ..strokeWidth = 1.2 + sparkData.depth * 1.6;
+      final tail = spark - sparkData.direction * (5 + 9 * fade);
+      canvas.drawLine(tail, spark, sparkPaint);
+      if (progress > .55 && sparkData.ember) {
+        canvas.drawCircle(spark, 1.2 * fade, sparkPaint);
       }
     }
   }
@@ -520,13 +543,52 @@ class _ConfettiParticle {
 }
 
 class _FireworkBurst {
-  const _FireworkBurst({
+  const _FireworkBurst._({
     required this.center,
     required this.delay,
-    required this.seed,
+    required this.sparks,
   });
+
+  factory _FireworkBurst.seeded({
+    required Offset center,
+    required double delay,
+    required int seed,
+  }) {
+    final random = Random(seed);
+    return _FireworkBurst._(
+      center: center,
+      delay: delay,
+      sparks: List.generate(24, (index) {
+        final angle = (pi * 2 * index / 24) + (random.nextDouble() - .5) * .14;
+        final depth = .55 + random.nextDouble() * .75;
+        return _FireworkSpark(
+          direction: Offset(cos(angle), sin(angle)),
+          depth: depth,
+          speed: (70 + random.nextDouble() * 100) * depth,
+          colorIndex: (index + seed) % _celebrationColors.length,
+          ember: index.isEven,
+        );
+      }),
+    );
+  }
 
   final Offset center;
   final double delay;
-  final int seed;
+  final List<_FireworkSpark> sparks;
+}
+
+class _FireworkSpark {
+  const _FireworkSpark({
+    required this.direction,
+    required this.depth,
+    required this.speed,
+    required this.colorIndex,
+    required this.ember,
+  });
+
+  final Offset direction;
+  final double depth;
+  final double speed;
+  final int colorIndex;
+  final bool ember;
 }

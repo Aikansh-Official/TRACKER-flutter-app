@@ -5,6 +5,7 @@ import 'package:tracker/data/tracker_database.dart';
 import 'package:tracker/services/notification_service.dart';
 import 'package:tracker/state/tracker_controller.dart';
 import 'package:tracker/ui/app_shell.dart';
+import 'package:tracker/ui/auth_screen.dart';
 import 'package:tracker/ui/screens/insights_screen.dart';
 import 'package:tracker/ui/widgets/motion.dart';
 
@@ -220,4 +221,91 @@ void main() {
     expect(find.text('Placement briefing'), findsOneWidget);
     expect(find.text('Smart day reminders'), findsOneWidget);
   });
+
+  testWidgets('onboarding, lock, failed login, and unlock work offline', (
+    tester,
+  ) async {
+    final controller = _AuthFlowController();
+
+    Widget harness() => MaterialApp(
+      theme: TrackerTheme.light,
+      home: MediaQuery(
+        data: const MediaQueryData(
+          size: Size(320, 800),
+          textScaler: TextScaler.linear(1.4),
+          disableAnimations: true,
+        ),
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) => controller.unlocked
+              ? const Scaffold(body: Text('Unlocked workspace'))
+              : AuthScreen(
+                  controller: controller,
+                  hasProfile: controller.profile != null,
+                ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(harness());
+    await tester.enterText(find.byType(TextField).at(0), 'Aikansh');
+    await tester.enterText(find.byType(TextField).at(1), 'aikansh@example.com');
+    await tester.enterText(find.byType(TextField).at(2), 'strong-pass');
+    await tester.ensureVisible(find.text('Create my profile →'));
+    await tester.tap(find.text('Create my profile →'));
+    await tester.pump();
+    expect(find.text('Unlocked workspace'), findsOneWidget);
+
+    await controller.lock();
+    await tester.pump();
+    expect(find.text('Welcome back'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(0), 'aikansh@example.com');
+    await tester.enterText(find.byType(TextField).at(1), 'wrong-pass');
+    await tester.ensureVisible(find.text('Unlock TRACKER →'));
+    await tester.tap(find.text('Unlock TRACKER →'));
+    await tester.pump();
+    expect(find.text('Incorrect email or password.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).at(1), 'strong-pass');
+    await tester.tap(find.text('Unlock TRACKER →'));
+    await tester.pump();
+    expect(find.text('Unlocked workspace'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+}
+
+class _AuthFlowController extends TrackerController {
+  _AuthFlowController() : super(TrackerDatabase(), NotificationService()) {
+    ready = true;
+  }
+
+  @override
+  Future<String?> createProfile(
+    String name,
+    String email,
+    String password,
+  ) async {
+    profile = {'name': name, 'email': email};
+    unlocked = true;
+    notifyListeners();
+    return null;
+  }
+
+  @override
+  Future<String?> login(String email, String password) async {
+    if (email != profile?['email'] || password != 'strong-pass') {
+      return 'Incorrect email or password.';
+    }
+    unlocked = true;
+    notifyListeners();
+    return null;
+  }
+
+  @override
+  Future<void> lock() async {
+    unlocked = false;
+    notifyListeners();
+  }
 }
