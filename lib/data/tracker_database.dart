@@ -2,14 +2,22 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class TrackerDatabase {
+  TrackerDatabase({this.factory, this.databasePath});
+
+  final DatabaseFactory? factory;
+  final String? databasePath;
   late final Database db;
 
   Future<void> open() async {
-    db = await openDatabase(
-      join(await getDatabasesPath(), 'tracker_offline.db'),
-      version: 1,
-      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
-      onCreate: _create,
+    final path =
+        databasePath ?? join(await getDatabasesPath(), 'tracker_offline.db');
+    db = await (factory ?? databaseFactory).openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+        onCreate: _create,
+      ),
     );
   }
 
