@@ -19,7 +19,17 @@ Future<void> main() async {
   );
   try {
     await database.open();
-    await notifications.initialize();
+    try {
+      await notifications.initialize();
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'TRACKER optional notifications',
+        ),
+      );
+    }
     await controller.initialize();
   } catch (error, stackTrace) {
     FlutterError.reportError(

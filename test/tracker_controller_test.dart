@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -33,6 +35,9 @@ void main() {
       ),
       isNull,
     );
+    final passwordRecord = first.profile?['password_hash'] as String;
+    expect(passwordRecord, startsWith('pbkdf2-sha256\$60000\$'));
+    expect(passwordRecord, isNot(contains('strong-pass')));
 
     await first.createRoutine({
       'title': 'Read before scrolling',
@@ -373,6 +378,59 @@ void main() {
     await database.db.close();
     await directory.delete(recursive: true);
   });
+
+  test('offline workspace opens when notifications are unavailable', () async {
+    SharedPreferences.setMockInitialValues({'tracker-smart-reminders': true});
+    final directory = await Directory.systemTemp.createTemp('tracker-test-');
+    final database = TrackerDatabase(
+      factory: databaseFactoryFfi,
+      databasePath: '${directory.path}${Platform.pathSeparator}tracker.db',
+    );
+    await database.open();
+    final controller = TrackerController(database, NotificationService());
+
+    await controller.initialize();
+
+    expect(controller.ready, isTrue);
+    expect(controller.smartRemindersEnabled, isFalse);
+    expect(controller.initializationFailed, isFalse);
+
+    await database.db.close();
+    await directory.delete(recursive: true);
+  });
+
+  test('legacy password digests migrate after a successful login', () async {
+    SharedPreferences.setMockInitialValues({});
+    final directory = await Directory.systemTemp.createTemp('tracker-test-');
+    final database = TrackerDatabase(
+      factory: databaseFactoryFfi,
+      databasePath: '${directory.path}${Platform.pathSeparator}tracker.db',
+    );
+    await database.open();
+    final legacy = sha256.convert(utf8.encode('legacy-pass')).toString();
+    await database.insert('profile', {
+      'id': 1,
+      'name': 'Legacy user',
+      'email': 'legacy@example.com',
+      'password_hash': legacy,
+      'timezone': 'Asia/Kolkata',
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    final controller = TrackerController(database, NotificationService());
+    await controller.initialize();
+
+    expect(
+      await controller.login('legacy@example.com', 'wrong-pass'),
+      isNotNull,
+    );
+    expect(await controller.login('legacy@example.com', 'legacy-pass'), isNull);
+    final migrated = (await database.rows('profile', limit: 1)).single;
+    expect(migrated['password_hash'], startsWith('pbkdf2-sha256\$60000\$'));
+    expect(migrated['password_hash'], isNot(legacy));
+
+    await database.db.close();
+    await directory.delete(recursive: true);
+  });
 }
 
 class _RecordingNotifications extends NotificationService {
@@ -380,6 +438,9 @@ class _RecordingNotifications extends NotificationService {
   int permissionRequests = 0;
   int daySummaries = 0;
   final scheduled = <({int id, String title, String body, DateTime at})>[];
+
+  @override
+  bool get available => true;
 
   @override
   Future<bool> requestPermission() async {

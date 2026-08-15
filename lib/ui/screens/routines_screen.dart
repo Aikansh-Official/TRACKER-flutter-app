@@ -158,6 +158,7 @@ class RoutinesScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: type,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: const [
@@ -197,6 +198,7 @@ class RoutinesScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: category,
                   decoration: const InputDecoration(labelText: 'Life area'),
                   items: [
@@ -214,6 +216,7 @@ class RoutinesScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: frequency,
                   decoration: const InputDecoration(labelText: 'Frequency'),
                   items: [
@@ -287,7 +290,12 @@ class RoutinesScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      title.dispose();
+      description.dispose();
+      target.dispose();
+      unit.dispose();
+    });
   }
 
   void _showArchived(BuildContext context) {
@@ -296,9 +304,10 @@ class RoutinesScreen extends StatelessWidget {
         .toList();
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (context) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(18),
           child: Column(
             mainAxisSize: MainAxisSize.min,

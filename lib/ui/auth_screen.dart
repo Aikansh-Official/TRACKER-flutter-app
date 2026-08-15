@@ -107,6 +107,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           TextField(
                             controller: name,
                             textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.name],
                             style: const TextStyle(color: TrackerColors.ink),
                             decoration: const InputDecoration(
                               labelText: 'Name',
@@ -117,6 +119,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         TextField(
                           controller: email,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.email],
+                          autocorrect: false,
                           style: const TextStyle(color: TrackerColors.ink),
                           decoration: const InputDecoration(labelText: 'Email'),
                         ),
@@ -124,6 +129,14 @@ class _AuthScreenState extends State<AuthScreen> {
                         TextField(
                           controller: password,
                           obscureText: obscure,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: [
+                            login
+                                ? AutofillHints.password
+                                : AutofillHints.newPassword,
+                          ],
+                          autocorrect: false,
+                          enableSuggestions: false,
                           style: const TextStyle(color: TrackerColors.ink),
                           onSubmitted: (_) => submit(),
                           decoration: InputDecoration(
@@ -143,17 +156,20 @@ class _AuthScreenState extends State<AuthScreen> {
                         if (error != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 14),
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFECE8),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(13),
-                                child: Text(
-                                  error!,
-                                  style: const TextStyle(
-                                    color: Color(0xFFB74432),
+                            child: Semantics(
+                              liveRegion: true,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFECE8),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(13),
+                                  child: Text(
+                                    error!,
+                                    style: const TextStyle(
+                                      color: Color(0xFFB74432),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -187,16 +203,24 @@ class _AuthScreenState extends State<AuthScreen> {
                                   ),
                                 ),
                         ),
-                        TextButton(
-                          onPressed: widget.hasProfile
-                              ? null
-                              : () => setState(() => login = !login),
-                          child: Text(
-                            login
-                                ? 'Create a different local profile'
-                                : 'Already have a profile? Sign in',
+                        if (widget.hasProfile)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 10),
+                            child: Text(
+                              'One private local profile lives on this device.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: TrackerColors.muted),
+                            ),
+                          )
+                        else
+                          TextButton(
+                            onPressed: () => setState(() => login = !login),
+                            child: Text(
+                              login
+                                  ? 'Create your local profile instead'
+                                  : 'Already have a profile? Sign in',
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

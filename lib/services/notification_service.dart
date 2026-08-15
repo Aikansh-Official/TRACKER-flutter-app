@@ -5,6 +5,8 @@ import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   final plugin = FlutterLocalNotificationsPlugin();
+  bool _available = false;
+  bool get available => _available;
 
   Future<void> initialize() async {
     tz.initializeTimeZones();
@@ -14,15 +16,17 @@ class NotificationService {
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
     );
+    _available = true;
   }
 
-  Future<bool> requestPermission() async =>
-      await plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission() ??
-      false;
+  Future<bool> requestPermission() async => _available
+      ? await plugin
+                .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin
+                >()
+                ?.requestNotificationsPermission() ??
+            false
+      : false;
 
   Future<void> schedule({
     required int id,
@@ -30,7 +34,7 @@ class NotificationService {
     required String body,
     required DateTime at,
   }) async {
-    if (at.isBefore(DateTime.now())) return;
+    if (!_available || at.isBefore(DateTime.now())) return;
     await plugin.zonedSchedule(
       id: id,
       title: title,
@@ -50,7 +54,8 @@ class NotificationService {
     );
   }
 
-  Future<void> cancel(int id) => plugin.cancel(id: id);
+  Future<void> cancel(int id) =>
+      _available ? plugin.cancel(id: id) : Future<void>.value();
 
   int _morningId(DateTime date) =>
       10000000 + date.year % 100 * 10000 + date.month * 100 + date.day;

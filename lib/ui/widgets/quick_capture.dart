@@ -96,7 +96,12 @@ class _QuickCaptureState extends State<QuickCapture> {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
       child: ListView(
         controller: scroll,
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 36,
+        ),
         children: [
           Center(
             child: Container(
@@ -180,6 +185,7 @@ class _QuickCaptureState extends State<QuickCapture> {
             },
           ),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: repeat,
             decoration: const InputDecoration(labelText: 'Repeat'),
             items: const [
@@ -305,6 +311,7 @@ class _QuickCaptureState extends State<QuickCapture> {
             ),
           const SizedBox(height: 14),
           DropdownButtonFormField<int?>(
+            isExpanded: true,
             initialValue: reminder,
             decoration: const InputDecoration(labelText: 'Reminder'),
             items: const [
@@ -343,9 +350,12 @@ class _QuickCaptureState extends State<QuickCapture> {
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 14),
-              child: Text(
-                error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             ),
           const SizedBox(height: 20),

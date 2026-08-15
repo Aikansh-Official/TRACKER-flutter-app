@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -38,13 +39,13 @@ class TrackerController extends ChangeNotifier {
   String key(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
   String get todayKey => key(DateTime.now());
   String _now() => DateTime.now().toIso8601String();
-  String _hash(String value) => sha256.convert(utf8.encode(value)).toString();
 
   Future<void> initialize() async {
     preferences = await SharedPreferences.getInstance();
     darkMode = preferences.getBool('tracker-theme-dark') ?? false;
     smartRemindersEnabled =
-        preferences.getBool('tracker-smart-reminders') ?? false;
+        (preferences.getBool('tracker-smart-reminders') ?? false) &&
+        notifications.available;
     final rows = await database.rows('profile', limit: 1);
     profile = rows.isEmpty ? null : rows.first;
     unlocked =
@@ -72,7 +73,7 @@ class TrackerController extends ChangeNotifier {
       'id': 1,
       'name': name.trim(),
       'email': email.trim().toLowerCase(),
-      'password_hash': _hash(password),
+      'password_hash': await compute(_createPasswordRecord, password),
       'timezone': 'Asia/Kolkata',
       'created_at': _now(),
     });
@@ -87,12 +88,29 @@ class TrackerController extends ChangeNotifier {
   Future<String?> login(String email, String password) async {
     final rows = await database.rows(
       'profile',
-      where: 'email = ? AND password_hash = ?',
-      whereArgs: [email.trim().toLowerCase(), _hash(password)],
+      where: 'email = ?',
+      whereArgs: [email.trim().toLowerCase()],
       limit: 1,
     );
     if (rows.isEmpty) return 'Incorrect email or password.';
-    profile = rows.first;
+    final stored = rows.first['password_hash'] as String;
+    final valid = await compute(_passwordMatches, {
+      'password': password,
+      'stored': stored,
+    });
+    if (!valid) return 'Incorrect email or password.';
+    final legacy = !stored.startsWith('pbkdf2-sha256\$');
+    if (legacy) {
+      await database.update(
+        'profile',
+        {'password_hash': await compute(_createPasswordRecord, password)},
+        where: 'id = ?',
+        whereArgs: [rows.first['id']],
+      );
+    }
+    profile = legacy
+        ? (await database.rows('profile', limit: 1)).first
+        : rows.first;
     unlocked = true;
     await preferences.setBool('tracker-unlocked', true);
     await refresh();
@@ -854,4 +872,62 @@ class TrackerController extends ChangeNotifier {
       ),
     );
   }
+}
+
+const _passwordIterations = 60000;
+
+String _createPasswordRecord(String password) {
+  final random = Random.secure();
+  final salt = Uint8List.fromList(
+    List<int>.generate(16, (_) => random.nextInt(256)),
+  );
+  final derived = _pbkdf2Sha256(password, salt, _passwordIterations);
+  return 'pbkdf2-sha256\$$_passwordIterations\$${base64UrlEncode(salt)}\$${base64UrlEncode(derived)}';
+}
+
+bool _passwordMatches(Map<String, String> values) {
+  final password = values['password']!;
+  final stored = values['stored']!;
+  if (!stored.startsWith('pbkdf2-sha256\$')) {
+    final legacy = sha256.convert(utf8.encode(password)).toString();
+    return _constantTimeEquals(utf8.encode(legacy), utf8.encode(stored));
+  }
+  final parts = stored.split('\$');
+  if (parts.length != 4) return false;
+  final iterations = int.tryParse(parts[1]);
+  if (iterations == null || iterations < 1 || iterations > 1000000) {
+    return false;
+  }
+  try {
+    final salt = base64Url.decode(parts[2]);
+    final expected = base64Url.decode(parts[3]);
+    final actual = _pbkdf2Sha256(password, salt, iterations);
+    return _constantTimeEquals(actual, expected);
+  } on FormatException {
+    return false;
+  }
+}
+
+Uint8List _pbkdf2Sha256(String password, List<int> salt, int iterations) {
+  final hmac = Hmac(sha256, utf8.encode(password));
+  final firstBlock = Uint8List(salt.length + 4)..setRange(0, salt.length, salt);
+  firstBlock[firstBlock.length - 1] = 1;
+  var previous = Uint8List.fromList(hmac.convert(firstBlock).bytes);
+  final derived = Uint8List.fromList(previous);
+  for (var round = 1; round < iterations; round++) {
+    previous = Uint8List.fromList(hmac.convert(previous).bytes);
+    for (var index = 0; index < derived.length; index++) {
+      derived[index] ^= previous[index];
+    }
+  }
+  return derived;
+}
+
+bool _constantTimeEquals(List<int> first, List<int> second) {
+  if (first.length != second.length) return false;
+  var difference = 0;
+  for (var index = 0; index < first.length; index++) {
+    difference |= first[index] ^ second[index];
+  }
+  return difference == 0;
 }

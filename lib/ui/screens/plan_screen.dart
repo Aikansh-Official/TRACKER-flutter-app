@@ -534,6 +534,7 @@ class _Goals extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: area,
                   decoration: const InputDecoration(labelText: 'Life area'),
                   items: [
@@ -578,7 +579,11 @@ class _Goals extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      title.dispose();
+      description.dispose();
+      milestones.dispose();
+    });
   }
 }
 
@@ -600,6 +605,14 @@ class _ReviewState extends State<_Review> {
     return DateFormat(
       'yyyy-MM-dd',
     ).format(d.subtract(Duration(days: d.weekday - 1)));
+  }
+
+  @override
+  void dispose() {
+    wins.dispose();
+    lessons.dispose();
+    next.dispose();
+    super.dispose();
   }
 
   @override
@@ -664,21 +677,39 @@ class _ReviewState extends State<_Review> {
               decoration: const InputDecoration(labelText: 'Next week’s focus'),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                const Text('Week rating'),
-                Expanded(
-                  child: Slider(
-                    value: rating.toDouble(),
-                    min: 1,
-                    max: 5,
-                    divisions: 4,
-                    label: '$rating',
-                    onChanged: (v) => setState(() => rating = v.round()),
-                  ),
-                ),
-                Text('$rating/5'),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final control = Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: rating.toDouble(),
+                        min: 1,
+                        max: 5,
+                        divisions: 4,
+                        label: '$rating',
+                        onChanged: (v) => setState(() => rating = v.round()),
+                      ),
+                    ),
+                    Text('$rating/5'),
+                  ],
+                );
+                final compact =
+                    constraints.maxWidth < 360 ||
+                    MediaQuery.textScalerOf(context).scale(1) > 1.3;
+                return compact
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [const Text('Week rating'), control],
+                      )
+                    : Row(
+                        children: [
+                          const Text('Week rating'),
+                          const SizedBox(width: 8),
+                          Expanded(child: control),
+                        ],
+                      );
+              },
             ),
             FilledButton.icon(
               onPressed: () async {

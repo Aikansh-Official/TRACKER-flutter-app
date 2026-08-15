@@ -7,7 +7,9 @@ import 'package:tracker/state/tracker_controller.dart';
 import 'package:tracker/ui/app_shell.dart';
 import 'package:tracker/ui/auth_screen.dart';
 import 'package:tracker/ui/screens/insights_screen.dart';
+import 'package:tracker/ui/screens/plan_screen.dart';
 import 'package:tracker/ui/widgets/motion.dart';
+import 'package:tracker/ui/widgets/quick_capture.dart';
 
 void main() {
   testWidgets('TRACKER light and dark themes keep input text visible', (
@@ -222,6 +224,86 @@ void main() {
     expect(find.text('Smart day reminders'), findsOneWidget);
   });
 
+  testWidgets('quick capture stays usable above a large keyboard', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = TrackerController(
+      TrackerDatabase(),
+      NotificationService(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: TrackerTheme.dark,
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 800),
+            viewInsets: EdgeInsets.only(bottom: 300),
+            textScaler: TextScaler.linear(1.4),
+            disableAnimations: true,
+          ),
+          child: Scaffold(body: QuickCapture(controller: controller)),
+        ),
+      ),
+    );
+    final verticalScroll = find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Save to TRACKER'),
+      420,
+      scrollable: verticalScroll,
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Save to TRACKER'), findsOneWidget);
+  });
+
+  testWidgets('every planning studio tab supports narrow large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = TrackerController(
+      TrackerDatabase(),
+      NotificationService(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: TrackerTheme.light,
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 800),
+            textScaler: TextScaler.linear(1.6),
+            disableAnimations: true,
+          ),
+          child: Scaffold(body: PlanScreen(controller: controller)),
+        ),
+      ),
+    );
+    const tabs = {
+      'Focus': 'Protect one honest block.',
+      'Goals': 'Direction, broken into proof.',
+      'Weekly review': 'Review without self-deception.',
+    };
+    for (final entry in tabs.entries) {
+      await tester.ensureVisible(find.text(entry.key));
+      await tester.tap(find.text(entry.key));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(tester.takeException(), isNull, reason: entry.key);
+      expect(find.text(entry.value), findsOneWidget);
+    }
+  });
+
   testWidgets('onboarding, lock, failed login, and unlock work offline', (
     tester,
   ) async {
@@ -259,6 +341,10 @@ void main() {
     await controller.lock();
     await tester.pump();
     expect(find.text('Welcome back'), findsOneWidget);
+    expect(
+      find.text('One private local profile lives on this device.'),
+      findsOneWidget,
+    );
     await tester.enterText(find.byType(TextField).at(0), 'aikansh@example.com');
     await tester.enterText(find.byType(TextField).at(1), 'wrong-pass');
     await tester.ensureVisible(find.text('Unlock TRACKER →'));

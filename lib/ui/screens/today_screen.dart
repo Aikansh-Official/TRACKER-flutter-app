@@ -416,6 +416,6 @@ class _TodayScreenState extends State<TodayScreen> {
           ),
         ],
       ),
-    );
+    ).whenComplete(reason.dispose);
   }
 }
