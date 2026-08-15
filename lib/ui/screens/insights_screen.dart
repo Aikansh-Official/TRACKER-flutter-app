@@ -158,8 +158,9 @@ class InsightsScreen extends StatelessWidget {
       if (s.score == 100) {
         current++;
         cursor = cursor.subtract(const Duration(days: 1));
-      } else
+      } else {
         break;
+      }
     }
     return (current, best);
   }

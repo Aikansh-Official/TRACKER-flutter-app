@@ -43,11 +43,12 @@ class _AuthScreenState extends State<AuthScreen> {
             email.text,
             password.text,
           );
-    if (mounted)
+    if (mounted) {
       setState(() {
         busy = false;
         error = result;
       });
+    }
   }
 
   @override

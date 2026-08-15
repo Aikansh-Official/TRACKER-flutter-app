@@ -188,10 +188,11 @@ class TrackerController extends ChangeNotifier {
     if (frequency == 'DAILY') return true;
     if (frequency == 'WEEKDAYS') return date.weekday <= 5;
     if (frequency == 'WEEKENDS') return date.weekday >= 6;
-    if (frequency == 'CUSTOM')
+    if (frequency == 'CUSTOM') {
       return (routine['scheduled_days'] as String)
           .split(',')
           .contains('$weekday');
+    }
     if (frequency == 'WEEKLY_TARGET') {
       final monday = date.subtract(Duration(days: date.weekday - 1));
       final done =
@@ -324,18 +325,20 @@ class TrackerController extends ChangeNotifier {
         final days = cursor.difference(start).inDays;
         var include = false;
         if (frequency == 'DAILY') include = days % interval == 0;
-        if (frequency == 'WEEKLY')
+        if (frequency == 'WEEKLY') {
           include =
               (days ~/ 7) % interval == 0 &&
               (weekdays.isEmpty
                   ? cursor.weekday == start.weekday
                   : weekdays.contains(cursor.weekday % 7));
-        if (frequency == 'MONTHLY')
+        }
+        if (frequency == 'MONTHLY') {
           include =
               cursor.day == start.day &&
               ((cursor.year - start.year) * 12 + cursor.month - start.month) %
                       interval ==
                   0;
+        }
         if (include) dates.add(cursor);
         cursor = cursor.add(const Duration(days: 1));
       }
@@ -366,8 +369,9 @@ class TrackerController extends ChangeNotifier {
       }
     });
     await refresh();
-    if (values['reminder_minutes'] != null)
+    if (values['reminder_minutes'] != null) {
       await scheduleTaskReminders(seriesId: series);
+    }
   }
 
   Future<void> updateTask(int id, Map<String, Object?> values) async {
@@ -427,7 +431,7 @@ class TrackerController extends ChangeNotifier {
         'outcome': outcome,
         'outcome_note': note,
         'delegated_to': delegatedTo ?? '',
-        if (newDate != null) 'scheduled_date': newDate,
+        'scheduled_date': ?newDate,
         'resolved_at': _now(),
       },
       where: 'id = ?',
@@ -462,15 +466,16 @@ class TrackerController extends ChangeNotifier {
       whereArgs: [entry['date']],
     );
     final values = {...entry, 'updated_at': _now()};
-    if (existing.isEmpty)
+    if (existing.isEmpty) {
       await database.insert('moods', {...values, 'created_at': _now()});
-    else
+    } else {
       await database.update(
         'moods',
         values,
         where: 'date = ?',
         whereArgs: [entry['date']],
       );
+    }
     await refresh();
   }
 
@@ -482,15 +487,16 @@ class TrackerController extends ChangeNotifier {
       whereArgs: [date],
     );
     final values = {...plan, 'updated_at': _now()};
-    if (existing.isEmpty)
+    if (existing.isEmpty) {
       await database.insert('daily_plans', values);
-    else
+    } else {
       await database.update(
         'daily_plans',
         values,
         where: 'date = ?',
         whereArgs: [date],
       );
+    }
     await refresh();
   }
 
@@ -499,8 +505,9 @@ class TrackerController extends ChangeNotifier {
     required int minutes,
     int? taskId,
   }) async {
-    if (focusSessions.any((e) => e['status'] == 'ACTIVE'))
+    if (focusSessions.any((e) => e['status'] == 'ACTIVE')) {
       return 'Finish or abandon the active focus session first.';
+    }
     await database.insert('focus_sessions', {
       'task_type': taskId == null ? 'GENERAL' : 'TASK',
       'task_id': taskId,
@@ -548,12 +555,13 @@ class TrackerController extends ChangeNotifier {
   Future<void> createGoal(Map<String, Object?> goal, List<String> items) async {
     await database.db.transaction((txn) async {
       final id = await txn.insert('goals', {...goal, 'created_at': _now()});
-      for (final item in items.where((e) => e.trim().isNotEmpty))
+      for (final item in items.where((e) => e.trim().isNotEmpty)) {
         await txn.insert('milestones', {
           'goal_id': id,
           'title': item.trim(),
           'done': 0,
         });
+      }
     });
     await refresh();
   }
@@ -578,15 +586,16 @@ class TrackerController extends ChangeNotifier {
       whereArgs: [week],
     );
     final values = {...review, 'updated_at': _now()};
-    if (existing.isEmpty)
+    if (existing.isEmpty) {
       await database.insert('weekly_reviews', values);
-    else
+    } else {
       await database.update(
         'weekly_reviews',
         values,
         where: 'week_start = ?',
         whereArgs: [week],
       );
+    }
     await refresh();
   }
 

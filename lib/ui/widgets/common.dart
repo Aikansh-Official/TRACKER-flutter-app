@@ -74,7 +74,7 @@ class _PageIntroState extends State<PageIntro>
             children: [
               Text(
                 widget.eyebrow.toUpperCase(),
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(
                   context,
@@ -83,8 +83,6 @@ class _PageIntroState extends State<PageIntro>
               const SizedBox(height: 9),
               Text(
                 widget.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
                   fontSize: compact ? 34 : 38,
                 ),
@@ -92,8 +90,6 @@ class _PageIntroState extends State<PageIntro>
               const SizedBox(height: 8),
               Text(
                 widget.subtitle,
-                maxLines: compact ? 3 : 2,
-                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).textTheme.bodySmall?.color,
                 ),
@@ -452,8 +448,6 @@ class SectionCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontFamily: 'serif',
                       fontWeight: FontWeight.w700,

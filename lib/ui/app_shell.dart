@@ -30,6 +30,9 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compactNavigation =
+        MediaQuery.sizeOf(context).width < 370 ||
+        MediaQuery.textScalerOf(context).scale(1) > 1.15;
     final pages = [
       OverviewScreen(controller: controller),
       PlanScreen(controller: controller),
@@ -65,11 +68,15 @@ class AppShell extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                'TRACKER',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontFamily: 'serif',
-                  letterSpacing: .8,
+              Flexible(
+                child: Text(
+                  'TRACKER',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontFamily: 'serif',
+                    letterSpacing: .8,
+                  ),
                 ),
               ),
             ],
@@ -151,6 +158,9 @@ class AppShell extends StatelessWidget {
         ),
         bottomNavigationBar: NavigationBar(
           height: 72,
+          labelBehavior: compactNavigation
+              ? NavigationDestinationLabelBehavior.onlyShowSelected
+              : NavigationDestinationLabelBehavior.alwaysShow,
           selectedIndex: controller.page,
           onDestinationSelected: controller.navigate,
           destinations: [

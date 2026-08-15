@@ -139,24 +139,7 @@ class _MoodScreenState extends State<MoodScreen>
                   Icons.center_focus_strong,
                   (v) => setState(() => focus = v),
                 ),
-                Row(
-                  children: [
-                    const Icon(Icons.bedtime_outlined),
-                    const SizedBox(width: 10),
-                    const SizedBox(width: 62, child: Text('Sleep')),
-                    Expanded(
-                      child: Slider(
-                        value: sleep,
-                        min: 0,
-                        max: 12,
-                        divisions: 24,
-                        label: '${sleep.toStringAsFixed(1)} h',
-                        onChanged: (v) => setState(() => sleep = v),
-                      ),
-                    ),
-                    Text('${sleep.toStringAsFixed(1)} h'),
-                  ],
-                ),
+                _sleepSlider(),
               ],
             ),
           ),
@@ -205,12 +188,13 @@ class _MoodScreenState extends State<MoodScreen>
               'factors': factors.join(','),
               'note': note.text.trim(),
             });
-            if (context.mounted)
+            if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Today’s check-in is saved offline.'),
                 ),
               );
+            }
           },
           icon: const Icon(Icons.favorite_outline),
           label: const Text('Save today’s check-in'),
@@ -338,23 +322,79 @@ class _MoodScreenState extends State<MoodScreen>
     IconData icon,
     ValueChanged<int> change, {
     bool reverse = false,
-  }) => Row(
-    children: [
-      Icon(icon),
-      const SizedBox(width: 10),
-      SizedBox(width: 62, child: Text(label)),
-      Expanded(
-        child: Slider(
-          value: value.toDouble(),
-          min: 1,
-          max: 5,
-          divisions: 4,
-          label: '$value',
-          onChanged: (v) => change(v.round()),
-        ),
-      ),
-      Text('$value/5'),
-    ],
+  }) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxWidth < 300;
+      final heading = Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label)),
+          Text('$value/5'),
+        ],
+      );
+      final slider = Slider(
+        value: value.toDouble(),
+        min: 1,
+        max: 5,
+        divisions: 4,
+        label: '$value',
+        onChanged: (v) => change(v.round()),
+      );
+      if (compact) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(children: [heading, slider]),
+        );
+      }
+      return Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: 10),
+          SizedBox(width: 62, child: Text(label)),
+          Expanded(child: slider),
+          Text('$value/5'),
+        ],
+      );
+    },
+  );
+
+  Widget _sleepSlider() => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxWidth < 300;
+      final value = '${sleep.toStringAsFixed(1)} h';
+      final heading = Row(
+        children: [
+          const Icon(Icons.bedtime_outlined),
+          const SizedBox(width: 10),
+          const Expanded(child: Text('Sleep')),
+          Text(value),
+        ],
+      );
+      final slider = Slider(
+        value: sleep,
+        min: 0,
+        max: 12,
+        divisions: 24,
+        label: value,
+        onChanged: (v) => setState(() => sleep = v),
+      );
+      if (compact) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(children: [heading, slider]),
+        );
+      }
+      return Row(
+        children: [
+          const Icon(Icons.bedtime_outlined),
+          const SizedBox(width: 10),
+          const SizedBox(width: 62, child: Text('Sleep')),
+          Expanded(child: slider),
+          Text(value),
+        ],
+      );
+    },
   );
   Widget _chips(
     BuildContext context,
@@ -381,7 +421,7 @@ class _MoodScreenState extends State<MoodScreen>
   );
   Widget _analytics(BuildContext context) {
     final entries = widget.controller.moods;
-    if (entries.isEmpty)
+    if (entries.isEmpty) {
       return const EmptyCard(
         eyebrow: 'No history yet',
         title: 'The first point begins the story.',
@@ -389,6 +429,7 @@ class _MoodScreenState extends State<MoodScreen>
             'Save today’s check-in. Trends will appear only when real history exists.',
         icon: Icons.insights,
       );
+    }
     return SectionCard(
       eyebrow: 'Saved mood history',
       title: entries.length == 1

@@ -379,10 +379,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     trailing: PopupMenuButton<String>(
                       onSelected: (v) {
-                        if (v == 'done')
+                        if (v == 'done') {
                           widget.controller.completeTask(item['id'] as int);
-                        if (v == 'archive')
+                        }
+                        if (v == 'archive') {
                           widget.controller.archiveTask(item['id'] as int);
+                        }
                       },
                       itemBuilder: (_) => const [
                         PopupMenuItem(

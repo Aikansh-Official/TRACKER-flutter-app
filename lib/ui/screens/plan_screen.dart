@@ -194,8 +194,9 @@ class _DailyPlanState extends State<_DailyPlan> {
                       value: selected.contains(t['id']),
                       onChanged: (on) {
                         setState(() {
-                          if (on == true && selected.length < 3)
+                          if (on == true && selected.length < 3) {
                             selected.add(t['id'] as int);
+                          }
                           if (on == false) selected.remove(t['id']);
                         });
                       },
@@ -225,10 +226,11 @@ class _DailyPlanState extends State<_DailyPlan> {
             'priority_ids': selected.join(','),
             'shutdown_note': shutdown.text.trim(),
           });
-          if (context.mounted)
+          if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Today’s plan is saved offline.')),
             );
+          }
         },
         icon: const Icon(Icons.save_outlined),
         label: const Text('Save today’s plan'),
@@ -315,10 +317,11 @@ class _FocusState extends State<_Focus> {
                           : title.text.trim(),
                       minutes: minutes,
                     );
-                    if (context.mounted && err != null)
+                    if (context.mounted && err != null) {
                       ScaffoldMessenger.of(
                         context,
                       ).showSnackBar(SnackBar(content: Text(err)));
+                    }
                   },
                   icon: const Icon(Icons.play_arrow),
                   label: const Text('Begin focus'),
@@ -690,10 +693,11 @@ class _ReviewState extends State<_Review> {
                     'completed': widget.controller.completedCount,
                   }),
                 });
-                if (context.mounted)
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Weekly review saved.')),
                   );
+                }
               },
               icon: const Icon(Icons.save_outlined),
               label: const Text('Save weekly review'),

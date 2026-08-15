@@ -35,11 +35,12 @@ class _TodayScreenState extends State<TodayScreen> {
   Future<void> completeTask(Map<String, Object?> task) async {
     final before = widget.controller.dailyScore;
     await widget.controller.completeTask(task['id'] as int);
-    if (task['status'] != 'COMPLETED')
+    if (task['status'] != 'COMPLETED') {
       showCelebration(
         task['title'] as String,
         before < 100 && widget.controller.dailyScore == 100,
       );
+    }
   }
 
   void showCelebration(String title, bool wholeDay) {
@@ -263,11 +264,12 @@ class _TodayScreenState extends State<TodayScreen> {
                       onPressed: () async {
                         final before = c.dailyScore;
                         await c.progressRoutine(record['id'] as int, 1);
-                        if (!completed)
+                        if (!completed) {
                           showCelebration(
                             routine['title'] as String,
                             before < 100 && c.dailyScore == 100,
                           );
+                        }
                       },
                       icon: const Icon(Icons.add_circle_outline),
                     ),
@@ -343,14 +345,16 @@ class _TodayScreenState extends State<TodayScreen> {
                   PopupMenuButton<String>(
                     onSelected: (v) {
                       if (v == 'archive') c.archiveTask(task['id'] as int);
-                      if (v == 'skip')
+                      if (v == 'skip') {
                         c.resolveTask(
                           task['id'] as int,
                           'SKIPPED',
                           note: 'Intentionally skipped',
                         );
-                      if (v == 'drop')
+                      }
+                      if (v == 'drop') {
                         c.resolveTask(task['id'] as int, 'DROPPED');
+                      }
                     },
                     itemBuilder: (_) => const [
                       PopupMenuItem(

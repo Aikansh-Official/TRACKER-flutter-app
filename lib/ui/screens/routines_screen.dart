@@ -93,8 +93,9 @@ class RoutinesScreen extends StatelessWidget {
             ),
             PopupMenuButton<String>(
               onSelected: (value) {
-                if (value == 'archive')
+                if (value == 'archive') {
                   controller.archiveRoutine(routine['id'] as int);
+                }
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'archive', child: Text('Archive')),
