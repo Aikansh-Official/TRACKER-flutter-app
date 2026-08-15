@@ -16,6 +16,7 @@ class TrackerController extends ChangeNotifier {
   final NotificationService notifications;
   late SharedPreferences preferences;
   bool ready = false;
+  bool initializationFailed = false;
   bool darkMode = false;
   bool smartRemindersEnabled = false;
   bool unlocked = false;
@@ -48,6 +49,12 @@ class TrackerController extends ChangeNotifier {
     unlocked =
         profile != null && (preferences.getBool('tracker-unlocked') ?? false);
     if (profile != null) await refresh();
+    ready = true;
+    notifyListeners();
+  }
+
+  void markInitializationFailed() {
+    initializationFailed = true;
     ready = true;
     notifyListeners();
   }
@@ -111,35 +118,37 @@ class TrackerController extends ChangeNotifier {
 
   Future<void> refresh() async {
     await _prepareToday();
-    routines = await database.rows('routines', orderBy: 'created_at DESC');
-    routineRecords = await database.rows(
-      'routine_records',
-      orderBy: 'date DESC',
-    );
-    tasks = await database.rows(
-      'tasks',
-      orderBy:
-          'scheduled_date ASC, COALESCE(start_time, deadline, "23:59") ASC',
-    );
-    subtasks = await database.rows('subtasks', orderBy: 'id ASC');
-    moods = await database.rows('moods', orderBy: 'date ASC');
-    plans = await database.rows('daily_plans', orderBy: 'date DESC');
-    focusSessions = await database.rows(
-      'focus_sessions',
-      orderBy: 'started_at DESC',
-    );
-    goals = await database.rows('goals', orderBy: 'created_at DESC');
-    milestones = await database.rows('milestones', orderBy: 'id ASC');
-    weeklyReviews = await database.rows(
-      'weekly_reviews',
-      orderBy: 'week_start DESC',
-    );
+    final rows = await Future.wait([
+      database.rows('routines', orderBy: 'created_at DESC'),
+      database.rows('routine_records', orderBy: 'date DESC'),
+      database.rows(
+        'tasks',
+        orderBy:
+            "scheduled_date ASC, COALESCE(start_time, deadline, '23:59') ASC",
+      ),
+      database.rows('subtasks', orderBy: 'id ASC'),
+      database.rows('moods', orderBy: 'date ASC'),
+      database.rows('daily_plans', orderBy: 'date DESC'),
+      database.rows('focus_sessions', orderBy: 'started_at DESC'),
+      database.rows('goals', orderBy: 'created_at DESC'),
+      database.rows('milestones', orderBy: 'id ASC'),
+      database.rows('weekly_reviews', orderBy: 'week_start DESC'),
+    ]);
+    routines = rows[0];
+    routineRecords = rows[1];
+    tasks = rows[2];
+    subtasks = rows[3];
+    moods = rows[4];
+    plans = rows[5];
+    focusSessions = rows[6];
+    goals = rows[7];
+    milestones = rows[8];
+    weeklyReviews = rows[9];
     if (smartRemindersEnabled) await syncSmartDayReminders();
     notifyListeners();
   }
 
   Future<void> _prepareToday() async {
-    await database.databaseBatch((batch) async {});
     await database.db.update(
       'tasks',
       {'status': 'PENDING'},
@@ -786,13 +795,5 @@ class TrackerController extends ChangeNotifier {
         text: 'TRACKER offline export',
       ),
     );
-  }
-}
-
-extension _DatabaseBatchCompatibility on TrackerDatabase {
-  Future<void> databaseBatch(Future<void> Function(Batch batch) action) async {
-    final batch = db.batch();
-    await action(batch);
-    await batch.commit(noResult: true);
   }
 }

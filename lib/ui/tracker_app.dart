@@ -25,7 +25,9 @@ class TrackerApp extends StatelessWidget {
       themeMode: controller.darkMode && controller.unlocked
           ? ThemeMode.dark
           : ThemeMode.light,
-      home: !controller.ready
+      home: controller.initializationFailed
+          ? const _InitializationFailure()
+          : !controller.ready
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : controller.profile == null || !controller.unlocked
           ? AuthScreen(
@@ -33,6 +35,45 @@ class TrackerApp extends StatelessWidget {
               hasProfile: controller.profile != null,
             )
           : AppShell(controller: controller),
+    ),
+  );
+}
+
+class _InitializationFailure extends StatelessWidget {
+  const _InitializationFailure();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.storage_rounded,
+                  size: 46,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'TRACKER could not open its offline workspace.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Close and reopen the app. Your saved data was not changed.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }

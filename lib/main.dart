@@ -8,11 +8,8 @@ import 'ui/tracker_app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final database = TrackerDatabase();
-  await database.open();
   final notifications = NotificationService();
-  await notifications.initialize();
   final controller = TrackerController(database, notifications);
-  await controller.initialize();
   runApp(
     TrackerApp(
       controller: controller,
@@ -20,4 +17,18 @@ Future<void> main() async {
       darkTheme: TrackerTheme.dark,
     ),
   );
+  try {
+    await database.open();
+    await notifications.initialize();
+    await controller.initialize();
+  } catch (error, stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'TRACKER initialization',
+      ),
+    );
+    controller.markInitializationFailed();
+  }
 }
