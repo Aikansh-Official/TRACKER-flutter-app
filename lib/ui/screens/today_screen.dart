@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/motion.dart';
 
 class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key, required this.controller});
@@ -75,12 +75,7 @@ class _TodayScreenState extends State<TodayScreen> {
                       DateFormat('HH:mm').format(now),
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    Text(
-                      'LIVE',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: TrackerColors.coral,
-                      ),
-                    ),
+                    const LiveIndicator(),
                   ],
                 ),
               ),
@@ -95,16 +90,37 @@ class _TodayScreenState extends State<TodayScreen> {
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            CircularProgressIndicator(
-                              value: c.dailyScore / 100,
-                              strokeWidth: 9,
-                              backgroundColor: Theme.of(context).dividerColor,
-                              color: TrackerColors.gold,
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: c.dailyScore / 100),
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 850),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, _) =>
+                                  CircularProgressIndicator(
+                                    value: value,
+                                    strokeWidth: 9,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).dividerColor,
+                                    color: TrackerColors.gold,
+                                  ),
                             ),
-                            Text(
-                              '${c.dailyScore}%',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontFamily: 'serif'),
+                            SizedBox.square(
+                              dimension: 50,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${c.dailyScore}%',
+                                  maxLines: 1,
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontFamily: 'serif',
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -171,7 +187,10 @@ class _TodayScreenState extends State<TodayScreen> {
         ),
         if (celebration != null)
           Positioned.fill(
-            child: _Celebration(title: celebration!, wholeDay: dayCelebration),
+            child: CelebrationOverlay(
+              title: celebration!,
+              wholeDay: dayCelebration,
+            ),
           ),
       ],
     );
@@ -232,13 +251,15 @@ class _TodayScreenState extends State<TodayScreen> {
                     ),
                   ),
                   if (!skipped) ...[
-                    IconButton(
+                    SpringIconButton(
+                      tooltip: 'Decrease routine progress',
                       onPressed: () =>
                           c.progressRoutine(record['id'] as int, -1),
                       icon: const Icon(Icons.remove_circle_outline),
                     ),
                     Text('${record['completed_quantity']}'),
-                    IconButton(
+                    SpringIconButton(
+                      tooltip: 'Increase routine progress',
                       onPressed: () async {
                         final before = c.dailyScore;
                         await c.progressRoutine(record['id'] as int, 1);
@@ -287,7 +308,8 @@ class _TodayScreenState extends State<TodayScreen> {
             children: [
               Row(
                 children: [
-                  IconButton(
+                  SpringIconButton(
+                    tooltip: done ? 'Mark task incomplete' : 'Complete task',
                     onPressed: () => completeTask(task),
                     icon: Icon(
                       done
@@ -392,76 +414,4 @@ class _TodayScreenState extends State<TodayScreen> {
       ),
     );
   }
-}
-
-class _Celebration extends StatelessWidget {
-  const _Celebration({required this.title, required this.wholeDay});
-  final String title;
-  final bool wholeDay;
-  @override
-  Widget build(BuildContext context) => IgnorePointer(
-    child: ColoredBox(
-      color: Colors.black.withValues(alpha: wholeDay ? .78 : .56),
-      child: Stack(
-        children: [
-          for (var i = 0; i < (wholeDay ? 72 : 28); i++)
-            Positioned(
-              left:
-                  ((i * 37 + 11) % 100) /
-                  100 *
-                  MediaQuery.sizeOf(context).width,
-              top: ((i * 19) % 70).toDouble(),
-              child: Transform.rotate(
-                angle: i * pi / 9,
-                child: Icon(
-                  i % 3 == 0 ? Icons.circle : Icons.rectangle,
-                  size: i % 4 == 0 ? 8 : 12,
-                  color: [
-                    TrackerColors.gold,
-                    TrackerColors.cream,
-                    TrackerColors.coral,
-                    TrackerColors.violet,
-                    TrackerColors.mint,
-                  ][i % 5],
-                ),
-              ),
-            ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  wholeDay ? '✦ DAY COMPLETE ✦' : '✓ COMPLETE',
-                  style: const TextStyle(
-                    color: TrackerColors.brightGold,
-                    letterSpacing: 3,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  wholeDay ? 'You kept every promise today.' : title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'serif',
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  wholeDay
-                      ? 'Pause for a second. This is what consistency feels like.'
-                      : 'One meaningful step is now part of your story.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFFE8E1D1)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }

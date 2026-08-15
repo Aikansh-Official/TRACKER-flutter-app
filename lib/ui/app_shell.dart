@@ -39,127 +39,129 @@ class AppShell extends StatelessWidget {
       CalendarScreen(controller: controller),
       InsightsScreen(controller: controller),
     ];
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: TrackerColors.violet,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Colors.white,
-                size: 19,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'TRACKER',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontFamily: 'serif',
-                letterSpacing: .8,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: controller.darkMode ? 'Use light mode' : 'Use dark mode',
-            onPressed: controller.toggleTheme,
-            icon: Icon(
-              controller.darkMode
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-            ),
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Workspace menu',
-            onSelected: (value) {
-              if (value == 'json') controller.exportJson();
-              if (value == 'ics') controller.exportIcs();
-              if (value == 'lock') controller.lock();
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'json',
-                child: ListTile(
-                  leading: Icon(Icons.data_object),
-                  title: Text('Export all data'),
+    return PopScope(
+      canPop: controller.page == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) controller.navigate(0);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          title: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: TrackerColors.violet,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 19,
                 ),
               ),
-              PopupMenuItem(
-                value: 'ics',
-                child: ListTile(
-                  leading: Icon(Icons.calendar_month),
-                  title: Text('Export calendar'),
-                ),
-              ),
-              PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'lock',
-                child: ListTile(
-                  leading: Icon(Icons.lock_outline),
-                  title: Text('Lock workspace'),
+              const SizedBox(width: 10),
+              Text(
+                'TRACKER',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontFamily: 'serif',
+                  letterSpacing: .8,
                 ),
               ),
             ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: IndexedStack(index: controller.page, children: pages),
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'reminders',
-            tooltip: 'Reminder center',
-            onPressed: () => _showReminders(context),
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            foregroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.notifications_none_rounded),
+          actions: [
+            IconButton(
+              tooltip: controller.darkMode ? 'Use light mode' : 'Use dark mode',
+              onPressed: controller.toggleTheme,
+              icon: Icon(
+                controller.darkMode
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Reminder center',
+              onPressed: () => _showReminders(context),
+              icon: const Icon(Icons.notifications_none_rounded),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Workspace menu',
+              onSelected: (value) {
+                if (value == 'json') controller.exportJson();
+                if (value == 'ics') controller.exportIcs();
+                if (value == 'lock') controller.lock();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'json',
+                  child: ListTile(
+                    leading: Icon(Icons.data_object),
+                    title: Text('Export all data'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'ics',
+                  child: ListTile(
+                    leading: Icon(Icons.calendar_month),
+                    title: Text('Export calendar'),
+                  ),
+                ),
+                PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'lock',
+                  child: ListTile(
+                    leading: Icon(Icons.lock_outline),
+                    title: Text('Lock workspace'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        body: SafeArea(
+          top: false,
+          child: _DestinationStage(
+            selectedIndex: controller.page,
+            children: pages,
           ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'quick-add',
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              useSafeArea: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => QuickCapture(controller: controller),
+        ),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton(
+              heroTag: 'quick-add',
+              tooltip: 'Quick add',
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => QuickCapture(controller: controller),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              child: const Icon(Icons.add_rounded),
             ),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            icon: const Icon(Icons.add),
-            label: const Text(
-              'Quick add',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        height: 72,
-        selectedIndex: controller.page,
-        onDestinationSelected: controller.navigate,
-        destinations: [
-          for (final d in destinations)
-            NavigationDestination(
-              icon: Icon(d.$1),
-              selectedIcon: Icon(d.$2),
-              label: d.$3,
-            ),
-        ],
+          ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          height: 72,
+          selectedIndex: controller.page,
+          onDestinationSelected: controller.navigate,
+          destinations: [
+            for (final d in destinations)
+              NavigationDestination(
+                icon: Icon(d.$1),
+                selectedIcon: Icon(d.$2),
+                label: d.$3,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -256,6 +258,54 @@ class AppShell extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DestinationStage extends StatelessWidget {
+  const _DestinationStage({
+    required this.selectedIndex,
+    required this.children,
+  });
+
+  final int selectedIndex;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduced = MediaQuery.disableAnimationsOf(context);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        for (var index = 0; index < children.length; index++)
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: index != selectedIndex,
+              child: ExcludeSemantics(
+                excluding: index != selectedIndex,
+                child: AnimatedOpacity(
+                  opacity: index == selectedIndex ? 1 : 0,
+                  duration: reduced
+                      ? Duration.zero
+                      : const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  child: AnimatedScale(
+                    scale: index == selectedIndex || reduced ? 1 : .985,
+                    duration: reduced
+                        ? Duration.zero
+                        : const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.center,
+                    child: TickerMode(
+                      enabled: index == selectedIndex,
+                      child: RepaintBoundary(child: children[index]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

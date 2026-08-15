@@ -1,55 +1,278 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 
-class PageIntro extends StatelessWidget {
+class PageIntro extends StatefulWidget {
   const PageIntro({
     super.key,
     required this.eyebrow,
     required this.title,
     required this.subtitle,
     this.trailing,
+    this.showOrbit = true,
   });
   final String eyebrow;
   final String title;
   final String subtitle;
   final Widget? trailing;
+  final bool showOrbit;
+
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              eyebrow.toUpperCase(),
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: TrackerColors.gold),
-            ),
-            const SizedBox(height: 9),
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.displayMedium?.copyWith(fontSize: 38),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).textTheme.bodySmall?.color,
+  State<PageIntro> createState() => _PageIntroState();
+}
+
+class _PageIntroState extends State<PageIntro>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 680),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1;
+    } else if (_controller.value == 0) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduced = MediaQuery.disableAnimationsOf(context);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final progress = Curves.easeOutCubic.transform(_controller.value);
+        return Opacity(
+          opacity: reduced ? 1 : progress,
+          child: Transform.translate(
+            offset: Offset(0, reduced ? 0 : 14 * (1 - progress)),
+            child: child,
+          ),
+        );
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 430;
+          final text = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.eyebrow.toUpperCase(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: TrackerColors.gold),
+              ),
+              const SizedBox(height: 9),
+              Text(
+                widget.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  fontSize: compact ? 34 : 38,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.subtitle,
+                maxLines: compact ? 3 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                ),
+              ),
+            ],
+          );
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (widget.showOrbit)
+                const Positioned(right: -22, top: -28, child: _HeroOrbit()),
+              if (compact || widget.trailing == null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    text,
+                    if (widget.trailing != null) ...[
+                      const SizedBox(height: 14),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: widget.trailing!,
+                      ),
+                    ],
+                  ],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: text),
+                    const SizedBox(width: 12),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 100),
+                      child: widget.trailing!,
+                    ),
+                  ],
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HeroOrbit extends StatefulWidget {
+  const _HeroOrbit();
+  @override
+  State<_HeroOrbit> createState() => _HeroOrbitState();
+}
+
+class _HeroOrbitState extends State<_HeroOrbit>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller
+        ..stop()
+        ..value = .5;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final wave = sin(_controller.value * pi);
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, .0014)
+            ..rotateX((_controller.value - .5) * .08)
+            ..rotateY((_controller.value - .5) * -.16)
+            ..rotateZ((_controller.value - .5) * .22),
+          child: Opacity(
+            opacity: .17,
+            child: Container(
+              width: 130,
+              height: 130,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: TrackerColors.gold, width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: TrackerColors.gold.withValues(
+                      alpha: .05 + .07 * wave,
+                    ),
+                    blurRadius: 14 + 16 * wave,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Transform.translate(
+                  offset: Offset(6 * (_controller.value - .5), -3 * wave),
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: TrackerColors.violet.withValues(alpha: .35),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
-      ),
-      if (trailing != null) trailing!,
-    ],
+          ),
+        );
+      },
+    ),
   );
 }
 
-class MetricCard extends StatelessWidget {
+class Reveal extends StatefulWidget {
+  const Reveal({super.key, required this.child, this.delay = Duration.zero});
+  final Widget child;
+  final Duration delay;
+  @override
+  State<Reveal> createState() => _RevealState();
+}
+
+class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 480),
+    );
+    Future<void>.delayed(widget.delay, () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (context, child) {
+      final reduced = MediaQuery.disableAnimationsOf(context);
+      final value = reduced ? 1.0 : _controller.value;
+      return Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(0, 10 * (1 - Curves.easeOut.transform(value))),
+          child: child,
+        ),
+      );
+    },
+    child: widget.child,
+  );
+}
+
+class MetricCard extends StatefulWidget {
   const MetricCard({
     super.key,
     required this.label,
@@ -60,28 +283,89 @@ class MetricCard extends StatelessWidget {
   final String label, value, caption;
   final Color? color;
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color ?? TrackerColors.muted,
+  State<MetricCard> createState() => _MetricCardState();
+}
+
+class _MetricCardState extends State<MetricCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 560),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1;
+    } else if (_controller.value == 0) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (context, child) {
+      final reduced = MediaQuery.disableAnimationsOf(context);
+      final progress = reduced
+          ? 1.0
+          : Curves.easeOutBack.transform(_controller.value);
+      return Opacity(
+        opacity: reduced ? 1 : _controller.value,
+        child: Transform.scale(scale: .94 + .06 * progress, child: child),
+      );
+    },
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.label.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: widget.color ?? TrackerColors.muted,
+              ),
             ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineLarge?.copyWith(fontSize: 34, color: color),
-          ),
-          const SizedBox(height: 4),
-          Text(caption, style: Theme.of(context).textTheme.bodySmall),
-        ],
+            const Spacer(),
+            AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 360),
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: Text(
+                widget.value,
+                key: ValueKey(widget.value),
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontSize: 34,
+                  color: widget.color,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              widget.caption,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -151,33 +435,48 @@ class SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 330;
+              final heading = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    eyebrow.toUpperCase(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: TrackerColors.gold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontFamily: 'serif',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              );
+              if (action == null) return heading;
+              if (compact) {
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      eyebrow.toUpperCase(),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: TrackerColors.gold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontFamily: 'serif',
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              if (action != null) action!,
-            ],
+                  children: [heading, const SizedBox(height: 10), action!],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(child: heading),
+                  const SizedBox(width: 8),
+                  action!,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           child,
@@ -187,4 +486,4 @@ class SectionCard extends StatelessWidget {
   );
 }
 
-EdgeInsets get pagePadding => const EdgeInsets.fromLTRB(18, 14, 18, 120);
+EdgeInsets get pagePadding => const EdgeInsets.fromLTRB(18, 14, 18, 150);

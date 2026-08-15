@@ -74,72 +74,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       bottomRight: Radius.circular(42),
                     ),
                   ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(13),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.auto_awesome_rounded,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Text(
-                            'TRACKER',
-                            style: TextStyle(
-                              fontFamily: 'serif',
-                              color: Colors.white,
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 44),
-                      Text(
-                        'YOUR PERSONAL RHYTHM',
-                        style: TextStyle(
-                          color: Color(0xFFE6E0FF),
-                          fontFamily: 'monospace',
-                          letterSpacing: 2.1,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        'Build a life you\nwant to repeat.',
-                        style: TextStyle(
-                          fontFamily: 'serif',
-                          color: Colors.white,
-                          fontSize: 43,
-                          height: .98,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(height: 13),
-                      Text(
-                        'Private by design. Every plan, feeling, and honest effort stays on this device.',
-                        style: TextStyle(
-                          color: Color(0xFFE9E5FF),
-                          height: 1.45,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: const _AuthHero(),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
@@ -271,5 +206,141 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       ),
     ),
+  );
+}
+
+class _AuthHero extends StatefulWidget {
+  const _AuthHero();
+  @override
+  State<_AuthHero> createState() => _AuthHeroState();
+}
+
+class _AuthHeroState extends State<_AuthHero>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller
+        ..stop()
+        ..value = .5;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) => Positioned(
+          right: -44,
+          bottom: -54 + _controller.value * 12,
+          child: Transform.rotate(
+            angle: _controller.value * .22,
+            child: Opacity(
+              opacity: .34,
+              child: Container(
+                width: 190,
+                height: 190,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white70),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 108,
+                    height: 108,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0x55998AEA),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.all(Radius.circular(13)),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Icon(Icons.auto_awesome_rounded, color: Colors.white),
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'TRACKER',
+                style: TextStyle(
+                  fontFamily: 'serif',
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 44),
+          Text(
+            'YOUR PERSONAL RHYTHM',
+            style: TextStyle(
+              color: Color(0xFFE6E0FF),
+              fontFamily: 'monospace',
+              letterSpacing: 2.1,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Build a life you\nwant to repeat.',
+            style: TextStyle(
+              fontFamily: 'serif',
+              color: Colors.white,
+              fontSize: 43,
+              height: .98,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 13),
+          Text(
+            'Private by design. Every plan, feeling, and honest effort stays on this device.',
+            style: TextStyle(
+              color: Color(0xFFE9E5FF),
+              height: 1.45,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    ],
   );
 }

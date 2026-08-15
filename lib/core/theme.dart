@@ -91,12 +91,29 @@ abstract final class TrackerTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: dark ? const Color(0xFF201C27) : const Color(0xFFF9F8FA),
+        alignLabelWithHint: true,
         hintStyle: TextStyle(
-          color: dark ? const Color(0xFFA9A1B1) : TrackerColors.muted,
+          color: dark
+              ? const Color(0xFFD2CBD9).withValues(alpha: .62)
+              : const Color(0xFF706B78).withValues(alpha: .58),
+          fontSize: 15,
+          height: 1.3,
+        ),
+        floatingLabelStyle: TextStyle(
+          color: dark ? TrackerColors.brightGold : TrackerColors.violet,
+          fontWeight: FontWeight.w700,
         ),
         labelStyle: TextStyle(
           color: dark ? const Color(0xFFD7CFDC) : TrackerColors.ink,
         ),
+        helperStyle: TextStyle(
+          color: dark ? const Color(0xFFA9A1B1) : TrackerColors.muted,
+        ),
+        counterStyle: TextStyle(
+          color: dark ? const Color(0xFFA9A1B1) : TrackerColors.muted,
+        ),
+        prefixIconColor: dark ? const Color(0xFFD2CBD9) : TrackerColors.muted,
+        suffixIconColor: dark ? const Color(0xFFD2CBD9) : TrackerColors.muted,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: borderColor),
@@ -114,7 +131,7 @@ abstract final class TrackerTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 15,
+          vertical: 16,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(

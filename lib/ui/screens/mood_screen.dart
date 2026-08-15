@@ -13,12 +13,14 @@ class MoodScreen extends StatefulWidget {
   State<MoodScreen> createState() => _MoodScreenState();
 }
 
-class _MoodScreenState extends State<MoodScreen> {
+class _MoodScreenState extends State<MoodScreen>
+    with SingleTickerProviderStateMixin {
   int mood = 3, energy = 3, stress = 3, focus = 3;
   double sleep = 7;
   final note = TextEditingController();
   final emotions = <String>{}, factors = <String>{};
   bool loaded = false;
+  late final AnimationController _orbitController;
   static const emotionOptions = [
     'Calm',
     'Hopeful',
@@ -48,8 +50,24 @@ class _MoodScreenState extends State<MoodScreen> {
     'Rest',
   ];
   @override
+  void initState() {
+    super.initState();
+    _orbitController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    );
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _orbitController
+        ..stop()
+        ..value = .5;
+    } else if (!_orbitController.isAnimating) {
+      _orbitController.repeat(reverse: true);
+    }
     if (!loaded) {
       final e = widget.controller.moodFor(widget.controller.todayKey);
       if (e != null) {
@@ -72,6 +90,7 @@ class _MoodScreenState extends State<MoodScreen> {
 
   @override
   void dispose() {
+    _orbitController.dispose();
     note.dispose();
     super.dispose();
   }
@@ -203,68 +222,112 @@ class _MoodScreenState extends State<MoodScreen> {
   );
   Widget _moodOrbit(BuildContext context) {
     final faces = ['😞', '😕', '😐', '🙂', '😄'];
-    return SizedBox(
-      height: 170,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 155,
-            height: 155,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: TrackerColors.gold.withValues(alpha: .45),
-              ),
-              gradient: RadialGradient(
-                colors: [
-                  TrackerColors.softGold.withValues(alpha: .7),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-          for (var i = 0; i < 5; i++)
-            Transform.translate(
-              offset: Offset(
-                cos((i * 72 - 90) * pi / 180) * 72,
-                sin((i * 72 - 90) * pi / 180) * 72,
-              ),
-              child: GestureDetector(
-                onTap: () => setState(() => mood = i + 1),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: mood == i + 1 ? 48 : 40,
-                  height: mood == i + 1 ? 48 : 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: mood == i + 1
-                        ? TrackerColors.gold
-                        : Theme.of(context).colorScheme.surface,
-                    border: Border.all(
-                      color: mood == i + 1
-                          ? TrackerColors.gold
-                          : Theme.of(context).dividerColor,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(faces[i], style: const TextStyle(fontSize: 22)),
+    return AnimatedBuilder(
+      animation: _orbitController,
+      builder: (context, _) => SizedBox(
+        height: 170,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 155,
+              height: 155,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: TrackerColors.gold.withValues(alpha: .45),
+                ),
+                gradient: RadialGradient(
+                  colors: [
+                    TrackerColors.softGold.withValues(alpha: .7),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$mood',
-                style: Theme.of(
-                  context,
-                ).textTheme.displayMedium?.copyWith(color: TrackerColors.gold),
+            for (var i = 0; i < 5; i++)
+              Builder(
+                builder: (context) {
+                  final direction = i.isEven ? 1.0 : -.64;
+                  final angle =
+                      (i * 72 -
+                          90 +
+                          (_orbitController.value - .5) * 10 * direction) *
+                      pi /
+                      180;
+                  final depth = .5 + .5 * sin(angle + pi / 2);
+                  final radius = 69 + (i % 3) * 2.5;
+                  final selected = mood == i + 1;
+                  return Transform.translate(
+                    offset: Offset(
+                      cos(angle) * radius,
+                      sin(angle) * radius * (.97 + depth * .04),
+                    ),
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, .0015)
+                        ..rotateY((depth - .5) * .12)
+                        ..scaleByDouble(
+                          selected ? 1.08 : .9 + depth * .14,
+                          selected ? 1.08 : .9 + depth * .14,
+                          1,
+                          1,
+                        ),
+                      child: GestureDetector(
+                        onTap: () => setState(() => mood = i + 1),
+                        child: AnimatedContainer(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 220),
+                          curve: Curves.easeOutBack,
+                          width: selected ? 48 : 40,
+                          height: selected ? 48 : 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: selected
+                                ? TrackerColors.gold
+                                : Theme.of(context).colorScheme.surface,
+                            border: Border.all(
+                              color: selected
+                                  ? TrackerColors.gold
+                                  : Theme.of(context).dividerColor,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: .04 + depth * .08,
+                                ),
+                                blurRadius: 3 + depth * 8,
+                                offset: Offset(0, 2 + depth * 3),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            faces[i],
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              Text('OF 5', style: Theme.of(context).textTheme.labelSmall),
-            ],
-          ),
-        ],
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$mood',
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    color: TrackerColors.gold,
+                  ),
+                ),
+                Text('OF 5', style: Theme.of(context).textTheme.labelSmall),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
