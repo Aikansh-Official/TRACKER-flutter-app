@@ -32,42 +32,34 @@ class OverviewScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            height: 138,
-            child: GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.55,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                MetricCard(
-                  label: 'Daily score',
-                  value: '${controller.dailyScore}%',
-                  caption: '${controller.activePlannedCount} active items',
-                  color: TrackerColors.gold,
-                ),
-                MetricCard(
-                  label: 'Routines',
-                  value:
-                      '${controller.todayRoutineRecords.where((e) => e['completed'] == 1).length}/${controller.todayRoutineRecords.length}',
-                  caption: 'completed today',
-                ),
-                MetricCard(
-                  label: 'Mood',
-                  value: mood == null ? '—' : '${mood['mood']}/5',
-                  caption: mood == null ? 'not checked in' : 'today’s check-in',
-                ),
-                MetricCard(
-                  label: 'Pending',
-                  value: '${controller.pendingTasks.length}',
-                  caption: 'needs a decision',
-                  color: controller.pendingTasks.isEmpty
-                      ? TrackerColors.mint
-                      : TrackerColors.coral,
-                ),
-              ],
-            ),
+          MetricGrid(
+            children: [
+              MetricCard(
+                label: 'Daily score',
+                value: '${controller.dailyScore}%',
+                caption: '${controller.activePlannedCount} active items',
+                color: TrackerColors.gold,
+              ),
+              MetricCard(
+                label: 'Routines',
+                value:
+                    '${controller.todayRoutineRecords.where((e) => e['completed'] == 1).length}/${controller.todayRoutineRecords.length}',
+                caption: 'completed today',
+              ),
+              MetricCard(
+                label: 'Mood',
+                value: mood == null ? '—' : '${mood['mood']}/5',
+                caption: mood == null ? 'not checked in' : 'today’s check-in',
+              ),
+              MetricCard(
+                label: 'Pending',
+                value: '${controller.pendingTasks.length}',
+                caption: 'needs a decision',
+                color: controller.pendingTasks.isEmpty
+                    ? TrackerColors.mint
+                    : TrackerColors.coral,
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           Text(

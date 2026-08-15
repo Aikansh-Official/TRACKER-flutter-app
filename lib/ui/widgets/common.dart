@@ -268,6 +268,33 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
   );
 }
 
+class MetricGrid extends StatelessWidget {
+  const MetricGrid({super.key, required this.children, this.spacing = 10});
+
+  final List<Widget> children;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final textScale = MediaQuery.textScalerOf(context).scale(1);
+      final columns =
+          constraints.maxWidth < 280 ||
+              (textScale > 1.3 && constraints.maxWidth < 520)
+          ? 1
+          : 2;
+      final width = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+      return Wrap(
+        spacing: spacing,
+        runSpacing: spacing,
+        children: [
+          for (final child in children) SizedBox(width: width, child: child),
+        ],
+      );
+    },
+  );
+}
+
 class MetricCard extends StatefulWidget {
   const MetricCard({
     super.key,
@@ -324,43 +351,47 @@ class _MetricCardState extends State<MetricCard>
       );
     },
     child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.label.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: widget.color ?? TrackerColors.muted,
-              ),
-            ),
-            const Spacer(),
-            AnimatedSwitcher(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 360),
-              transitionBuilder: (child, animation) => ScaleTransition(
-                scale: animation,
-                child: FadeTransition(opacity: animation, child: child),
-              ),
-              child: Text(
-                widget.value,
-                key: ValueKey(widget.value),
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: 34,
-                  color: widget.color,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 120),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.label.toUpperCase(),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: widget.color ?? TrackerColors.muted,
                 ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              widget.caption,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+              const SizedBox(height: 12),
+              AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 360),
+                transitionBuilder: (child, animation) => ScaleTransition(
+                  scale: animation,
+                  child: FadeTransition(opacity: animation, child: child),
+                ),
+                child: Text(
+                  widget.value,
+                  key: ValueKey(widget.value),
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    fontSize: 34,
+                    color: widget.color,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.caption,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
     ),

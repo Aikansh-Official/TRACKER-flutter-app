@@ -54,7 +54,7 @@ class _QuickCaptureState extends State<QuickCapture> {
       saving = true;
       error = null;
     });
-    await widget.controller.createTask({
+    final reminderScheduled = await widget.controller.createTask({
       'title': title.text.trim(),
       'description': '',
       'item_type': type,
@@ -72,7 +72,18 @@ class _QuickCaptureState extends State<QuickCapture> {
           ? null
           : widget.controller.key(repeatUntil!),
     }, checklist.text.split('\n'));
-    if (mounted) Navigator.pop(context);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    if (reminder != null && !reminderScheduled) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Saved offline. Allow notifications to receive its reminder.',
+          ),
+        ),
+      );
+    }
   }
 
   @override

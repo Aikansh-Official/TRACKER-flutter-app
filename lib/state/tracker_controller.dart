@@ -311,7 +311,7 @@ class TrackerController extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> createTask(
+  Future<bool> createTask(
     Map<String, Object?> values,
     List<String> checklist,
   ) async {
@@ -379,8 +379,9 @@ class TrackerController extends ChangeNotifier {
     });
     await refresh();
     if (values['reminder_minutes'] != null) {
-      await scheduleTaskReminders(seriesId: series);
+      return scheduleTaskReminders(seriesId: series);
     }
+    return true;
   }
 
   Future<void> updateTask(int id, Map<String, Object?> values) async {
@@ -608,24 +609,41 @@ class TrackerController extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> scheduleTaskReminders({String? seriesId}) async {
-    final items = tasks.where(
-      (e) =>
-          e['reminder_minutes'] != null &&
-          (seriesId == null || e['series_id'] == seriesId),
-    );
+  DateTime? taskReminderAt(Map<String, Object?> item) {
+    final minutes = item['reminder_minutes'] as int?;
+    if (minutes == null) return null;
+    final time = (item['start_time'] ?? item['deadline'] ?? '09:00') as String;
+    final pieces = time.split(':');
+    if (pieces.length != 2) return null;
+    final hour = int.tryParse(pieces[0]);
+    final minute = int.tryParse(pieces[1]);
+    if (hour == null || minute == null || hour > 23 || minute > 59) return null;
+    final date = DateTime.tryParse(item['scheduled_date'] as String? ?? '');
+    if (date == null) return null;
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      hour,
+      minute,
+    ).subtract(Duration(minutes: minutes));
+  }
+
+  Future<bool> scheduleTaskReminders({String? seriesId}) async {
+    final items = tasks
+        .where(
+          (e) =>
+              e['reminder_minutes'] != null &&
+              (seriesId == null || e['series_id'] == seriesId),
+        )
+        .toList();
+    if (items.isEmpty) return true;
+    if (!await notifications.requestPermission()) return false;
     for (final item in items) {
       final time =
           (item['start_time'] ?? item['deadline'] ?? '09:00') as String;
-      final pieces = time.split(':');
-      final date = DateTime.parse(item['scheduled_date'] as String);
-      final at = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        int.parse(pieces[0]),
-        int.parse(pieces[1]),
-      ).subtract(Duration(minutes: item['reminder_minutes'] as int));
+      final at = taskReminderAt(item);
+      if (at == null) continue;
       await notifications.schedule(
         id: item['id'] as int,
         title: item['title'] as String,
@@ -633,6 +651,7 @@ class TrackerController extends ChangeNotifier {
         at: at,
       );
     }
+    return true;
   }
 
   Future<bool> setSmartReminders(bool enabled) async {

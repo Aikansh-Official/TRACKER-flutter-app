@@ -177,25 +177,36 @@ class AppShell extends StatelessWidget {
   }
 
   void _showReminders(BuildContext context) {
-    final upcoming = controller.tasks
-        .where(
-          (e) =>
-              e['reminder_minutes'] != null &&
-              ![
-                'COMPLETED',
-                'SKIPPED',
-                'DROPPED',
-                'DELEGATED',
-                'ARCHIVED',
-              ].contains(e['status']),
-        )
-        .take(8)
-        .toList();
+    final now = DateTime.now();
+    final horizon = now.add(const Duration(hours: 24));
+    final candidates =
+        controller.tasks
+            .where(
+              (e) =>
+                  controller.taskReminderAt(e) != null &&
+                  !controller.taskReminderAt(e)!.isBefore(now) &&
+                  !controller.taskReminderAt(e)!.isAfter(horizon) &&
+                  ![
+                    'COMPLETED',
+                    'SKIPPED',
+                    'DROPPED',
+                    'DELEGATED',
+                    'ARCHIVED',
+                  ].contains(e['status']),
+            )
+            .toList()
+          ..sort(
+            (a, b) => controller
+                .taskReminderAt(a)!
+                .compareTo(controller.taskReminderAt(b)!),
+          );
+    final upcoming = candidates.take(8).toList();
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (context) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,

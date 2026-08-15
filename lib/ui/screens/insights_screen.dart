@@ -72,39 +72,32 @@ class InsightsScreen extends StatelessWidget {
                 'No fabricated points. Sparse history stays honestly sparse.',
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            height: 226,
-            child: GridView.count(
-              crossAxisCount: 2,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 9,
-              mainAxisSpacing: 9,
-              childAspectRatio: 1.45,
-              children: [
-                MetricCard(
-                  label: 'Average completion',
-                  value: '${average.round()}%',
-                  caption: 'across ${active.length} active days',
-                  color: TrackerColors.gold,
-                ),
-                MetricCard(
-                  label: 'Current streak',
-                  value: '${streaks.$1}',
-                  caption: 'fully completed days',
-                ),
-                MetricCard(
-                  label: 'Best streak',
-                  value: '${streaks.$2}',
-                  caption: 'longest complete run',
-                ),
-                MetricCard(
-                  label: 'Focus',
-                  value:
-                      '${controller.focusSessions.where((e) => e['status'] == 'COMPLETED').fold(0, (s, e) => s + (e['duration_minutes'] as int? ?? 0))}m',
-                  caption: 'protected attention',
-                ),
-              ],
-            ),
+          MetricGrid(
+            spacing: 9,
+            children: [
+              MetricCard(
+                label: 'Average completion',
+                value: '${average.round()}%',
+                caption: 'across ${active.length} active days',
+                color: TrackerColors.gold,
+              ),
+              MetricCard(
+                label: 'Current streak',
+                value: '${streaks.$1}',
+                caption: 'fully completed days',
+              ),
+              MetricCard(
+                label: 'Best streak',
+                value: '${streaks.$2}',
+                caption: 'longest complete run',
+              ),
+              MetricCard(
+                label: 'Focus',
+                value:
+                    '${controller.focusSessions.where((e) => e['status'] == 'COMPLETED').fold(0, (s, e) => s + (e['duration_minutes'] as int? ?? 0))}m',
+                caption: 'protected attention',
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           if (active.isEmpty)
