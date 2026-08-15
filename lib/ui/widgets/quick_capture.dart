@@ -4,18 +4,20 @@ import '../../core/theme.dart';
 import '../../state/tracker_controller.dart';
 
 class QuickCapture extends StatefulWidget {
-  const QuickCapture({super.key, required this.controller});
+  const QuickCapture({super.key, required this.controller, this.existingTask});
   final TrackerController controller;
+  final Map<String, Object?>? existingTask;
   @override
   State<QuickCapture> createState() => _QuickCaptureState();
 }
 
 class _QuickCaptureState extends State<QuickCapture> {
   final title = TextEditingController();
+  final description = TextEditingController();
   final checklist = TextEditingController();
   final estimate = TextEditingController(text: '30');
   DateTime date = DateTime.now();
-  String type = 'TASK', repeat = 'NONE';
+  String type = 'TASK', repeat = 'NONE', priority = 'MEDIUM';
   int interval = 1;
   final weekdays = <int>{};
   DateTime? repeatUntil;
@@ -25,9 +27,53 @@ class _QuickCaptureState extends State<QuickCapture> {
   bool saving = false;
   String? error;
 
+  bool get editing => widget.existingTask != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.existingTask;
+    if (item == null) return;
+    title.text = item['title'] as String;
+    description.text = item['description'] as String? ?? '';
+    checklist.text = widget.controller
+        .subtasksFor(item['id'] as int)
+        .map((entry) => entry['title'] as String)
+        .join('\n');
+    estimate.text = '${item['estimated_minutes'] ?? 30}';
+    date = DateTime.parse(item['scheduled_date'] as String);
+    type = item['item_type'] as String? ?? 'TASK';
+    repeat = item['recurrence_frequency'] as String? ?? 'NONE';
+    interval = item['recurrence_interval'] as int? ?? 1;
+    weekdays.addAll(
+      (item['recurrence_weekdays'] as String? ?? '')
+          .split(',')
+          .where((value) => value.isNotEmpty)
+          .map(int.parse),
+    );
+    final end = item['recurrence_end_date'] as String?;
+    repeatUntil = end == null || end.isEmpty ? null : DateTime.parse(end);
+    allDay = item['all_day'] == 1;
+    start = _parseTime(item['start_time']);
+    deadline = _parseTime(item['deadline']);
+    reminder = item['reminder_minutes'] as int?;
+    priority = item['priority'] as String? ?? 'MEDIUM';
+  }
+
+  TimeOfDay? _parseTime(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    final pieces = value.split(':');
+    if (pieces.length != 2) return null;
+    final hour = int.tryParse(pieces[0]), minute = int.tryParse(pieces[1]);
+    return hour == null || minute == null
+        ? null
+        : TimeOfDay(hour: hour, minute: minute);
+  }
+
   @override
   void dispose() {
     title.dispose();
+    description.dispose();
     checklist.dispose();
     estimate.dispose();
     super.dispose();
@@ -54,15 +100,15 @@ class _QuickCaptureState extends State<QuickCapture> {
       saving = true;
       error = null;
     });
-    final reminderScheduled = await widget.controller.createTask({
+    final values = <String, Object?>{
       'title': title.text.trim(),
-      'description': '',
+      'description': description.text.trim(),
       'item_type': type,
       'scheduled_date': widget.controller.key(date),
       'all_day': allDay ? 1 : 0,
       'start_time': type == 'EVENT' ? formatTime(start) : null,
       'deadline': formatTime(deadline).isEmpty ? null : formatTime(deadline),
-      'priority': 'MEDIUM',
+      'priority': priority,
       'estimated_minutes': int.tryParse(estimate.text)?.clamp(5, 480) ?? 30,
       'reminder_minutes': reminder,
       'recurrence_frequency': repeat,
@@ -71,7 +117,17 @@ class _QuickCaptureState extends State<QuickCapture> {
       'recurrence_end_date': repeatUntil == null
           ? null
           : widget.controller.key(repeatUntil!),
-    }, checklist.text.split('\n'));
+    };
+    final reminderScheduled = editing
+        ? await widget.controller.editTask(
+            widget.existingTask!['id'] as int,
+            values,
+            checklist.text.split('\n'),
+          )
+        : await widget.controller.createTask(
+            values,
+            checklist.text.split('\n'),
+          );
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
@@ -121,14 +177,14 @@ class _QuickCaptureState extends State<QuickCapture> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'QUICK CAPTURE',
+                      editing ? 'EDIT ${type.toUpperCase()}' : 'QUICK CAPTURE',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: TrackerColors.gold,
                       ),
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      'Get it out of your head.',
+                      editing ? 'Refine the plan.' : 'Get it out of your head.',
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ],
@@ -169,6 +225,17 @@ class _QuickCaptureState extends State<QuickCapture> {
             ),
           ),
           const SizedBox(height: 14),
+          TextField(
+            controller: description,
+            minLines: 2,
+            maxLines: 4,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Details (optional)',
+              hintText: 'Context your future self will need',
+            ),
+          ),
+          const SizedBox(height: 14),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Date'),
@@ -184,19 +251,20 @@ class _QuickCaptureState extends State<QuickCapture> {
               if (picked != null) setState(() => date = picked);
             },
           ),
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: repeat,
-            decoration: const InputDecoration(labelText: 'Repeat'),
-            items: const [
-              DropdownMenuItem(value: 'NONE', child: Text('Does not repeat')),
-              DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
-              DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
-              DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
-            ],
-            onChanged: (v) => setState(() => repeat = v!),
-          ),
-          if (repeat != 'NONE') ...[
+          if (!editing)
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: repeat,
+              decoration: const InputDecoration(labelText: 'Repeat'),
+              items: const [
+                DropdownMenuItem(value: 'NONE', child: Text('Does not repeat')),
+                DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
+                DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
+                DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
+              ],
+              onChanged: (v) => setState(() => repeat = v!),
+            ),
+          if (!editing && repeat != 'NONE') ...[
             const SizedBox(height: 14),
             Row(
               children: [
@@ -246,7 +314,7 @@ class _QuickCaptureState extends State<QuickCapture> {
               title: const Text('Repeat until'),
               subtitle: Text(
                 repeatUntil == null
-                    ? 'One-year default horizon'
+                    ? 'Up to one year · maximum 120 occurrences'
                     : DateFormat('d MMM y').format(repeatUntil!),
               ),
               trailing: const Icon(Icons.event_repeat),
@@ -326,6 +394,25 @@ class _QuickCaptureState extends State<QuickCapture> {
           ),
           if (type == 'TASK') ...[
             const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: priority,
+              decoration: const InputDecoration(labelText: 'Priority'),
+              items: const [
+                DropdownMenuItem(value: 'LOW', child: Text('Low priority')),
+                DropdownMenuItem(
+                  value: 'MEDIUM',
+                  child: Text('Medium priority'),
+                ),
+                DropdownMenuItem(value: 'HIGH', child: Text('High priority')),
+                DropdownMenuItem(
+                  value: 'CRITICAL',
+                  child: Text('Critical priority'),
+                ),
+              ],
+              onChanged: (value) => setState(() => priority = value!),
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: estimate,
               keyboardType: TextInputType.number,
@@ -368,7 +455,13 @@ class _QuickCaptureState extends State<QuickCapture> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.auto_awesome),
-            label: Text(saving ? 'Saving offline…' : 'Save to TRACKER'),
+            label: Text(
+              saving
+                  ? 'Saving offline…'
+                  : editing
+                  ? 'Save changes'
+                  : 'Save to TRACKER',
+            ),
           ),
         ],
       ),

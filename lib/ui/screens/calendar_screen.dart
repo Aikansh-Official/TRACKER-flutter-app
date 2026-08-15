@@ -379,6 +379,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     trailing: PopupMenuButton<String>(
                       onSelected: (v) {
+                        if (v == 'edit') _editItem(context, item);
                         if (v == 'done') {
                           widget.controller.completeTask(item['id'] as int);
                         }
@@ -387,6 +388,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         }
                       },
                       itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
                         PopupMenuItem(
                           value: 'done',
                           child: Text('Toggle complete'),
@@ -397,6 +399,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
               ],
             ),
+    );
+  }
+
+  void _editItem(BuildContext context, Map<String, Object?> item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          QuickCapture(controller: widget.controller, existingTask: item),
     );
   }
 }

@@ -411,6 +411,7 @@ class TrackerController extends ChangeNotifier {
     final series = frequency == 'NONE'
         ? null
         : DateTime.now().microsecondsSinceEpoch.toString();
+    final createdIds = <int>[];
     await database.db.transaction((txn) async {
       for (final date in dates) {
         final dateKey = key(date);
@@ -423,6 +424,7 @@ class TrackerController extends ChangeNotifier {
           'status': dateKey == todayKey ? 'TODAY' : 'SCHEDULED',
           'created_at': _now(),
         });
+        createdIds.add(id);
         for (final item
             in checklist.where((e) => e.trim().isNotEmpty).take(30)) {
           await txn.insert('subtasks', {
@@ -435,7 +437,49 @@ class TrackerController extends ChangeNotifier {
     });
     await refresh();
     if (values['reminder_minutes'] != null) {
-      return scheduleTaskReminders(seriesId: series);
+      return scheduleTaskReminders(taskIds: createdIds.toSet());
+    }
+    return true;
+  }
+
+  Future<bool> editTask(
+    int id,
+    Map<String, Object?> values,
+    List<String> checklist,
+  ) async {
+    final current = tasks.firstWhere((item) => item['id'] == id);
+    final scheduledDate = values['scheduled_date'] as String;
+    final terminal = [
+      'COMPLETED',
+      'SKIPPED',
+      'DROPPED',
+      'DELEGATED',
+      'ARCHIVED',
+    ].contains(current['status']);
+    await notifications.cancel(id);
+    await database.db.transaction((txn) async {
+      await txn.update(
+        'tasks',
+        {
+          ...values,
+          if (!terminal)
+            'status': scheduledDate == todayKey ? 'TODAY' : 'SCHEDULED',
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('subtasks', where: 'task_id = ?', whereArgs: [id]);
+      for (final item in checklist.where((e) => e.trim().isNotEmpty).take(30)) {
+        await txn.insert('subtasks', {
+          'task_id': id,
+          'title': item.trim(),
+          'done': 0,
+        });
+      }
+    });
+    await refresh();
+    if (values['reminder_minutes'] != null) {
+      return scheduleTaskReminders(taskIds: {id});
     }
     return true;
   }
@@ -685,12 +729,16 @@ class TrackerController extends ChangeNotifier {
     ).subtract(Duration(minutes: minutes));
   }
 
-  Future<bool> scheduleTaskReminders({String? seriesId}) async {
+  Future<bool> scheduleTaskReminders({
+    String? seriesId,
+    Set<int>? taskIds,
+  }) async {
     final items = tasks
         .where(
           (e) =>
               e['reminder_minutes'] != null &&
-              (seriesId == null || e['series_id'] == seriesId),
+              (seriesId == null || e['series_id'] == seriesId) &&
+              (taskIds == null || taskIds.contains(e['id'])),
         )
         .toList();
     if (items.isEmpty) return true;

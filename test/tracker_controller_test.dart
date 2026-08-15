@@ -71,6 +71,11 @@ void main() {
     expect(first.todayRoutineRecords.single['skipped'], 0);
     await first.progressRoutine(routineRecordId, 1);
     expect(first.todayRoutineRecords.single['completed'], 0);
+    expect(first.todayRoutineRecords.single['completed_quantity'], 1);
+    await first.progressRoutine(routineRecordId, -1);
+    expect(first.todayRoutineRecords.single['completed_quantity'], 0);
+    expect(first.todayRoutineRecords.single['completed'], 0);
+    await first.progressRoutine(routineRecordId, 1);
     await first.progressRoutine(routineRecordId, 1);
     expect(first.todayRoutineRecords.single['completed'], 1);
 
@@ -100,6 +105,34 @@ void main() {
       first.subtasksFor(task['id'] as int).first['id'] as int,
     );
     expect(first.subtasksFor(task['id'] as int).first['done'], 1);
+    expect(
+      await first.editTask(
+        task['id'] as int,
+        {
+          'title': 'Submit the revised placement report',
+          'description': 'Include the final evidence.',
+          'item_type': 'TASK',
+          'scheduled_date': first.todayKey,
+          'all_day': 0,
+          'start_time': null,
+          'priority': 'CRITICAL',
+          'deadline': '17:30',
+          'estimated_minutes': 35,
+          'reminder_minutes': null,
+          'recurrence_frequency': 'NONE',
+          'recurrence_interval': 1,
+          'recurrence_weekdays': '',
+          'recurrence_end_date': null,
+        },
+        ['Final review'],
+      ),
+      isTrue,
+    );
+    expect(first.todayTasks.single['priority'], 'CRITICAL');
+    expect(
+      first.subtasksFor(task['id'] as int).single['title'],
+      'Final review',
+    );
     await first.completeTask(task['id'] as int);
 
     final tomorrow = DateTime.now().add(const Duration(days: 1));
@@ -187,13 +220,21 @@ void main() {
     expect(reopened.unlocked, isTrue);
     expect(reopened.todayTasks.single['status'], 'COMPLETED');
     expect(
+      reopened.todayTasks.single['title'],
+      'Submit the revised placement report',
+    );
+    expect(
       reopened.tasks.singleWhere(
         (entry) => entry['title'] == 'University holiday',
       )['all_day'],
       1,
     );
     expect(reopened.todayRoutineRecords.single['completed'], 1);
-    expect(reopened.subtasksFor(task['id'] as int).first['done'], 1);
+    expect(
+      reopened.subtasksFor(task['id'] as int).single['title'],
+      'Final review',
+    );
+    expect(reopened.subtasksFor(task['id'] as int).single['done'], 0);
     expect(reopened.moodFor(reopened.todayKey)?['sleep_hours'], 7.5);
     expect(reopened.plans.single['capacity'], 'NORMAL');
     expect(reopened.focusSessions.single['status'], 'COMPLETED');
@@ -270,10 +311,31 @@ void main() {
       ).subtract(const Duration(minutes: 30)),
     );
 
+    await controller.createTask({
+      'title': 'Interview follow-up',
+      'description': '',
+      'item_type': 'TASK',
+      'scheduled_date': controller.key(eventTime),
+      'all_day': 0,
+      'start_time': null,
+      'priority': 'MEDIUM',
+      'deadline': clock,
+      'estimated_minutes': 20,
+      'reminder_minutes': 10,
+      'recurrence_frequency': 'NONE',
+      'recurrence_interval': 1,
+      'recurrence_weekdays': '',
+      'recurrence_end_date': null,
+    }, const []);
+    expect(notifications.scheduled.map((item) => item.title), [
+      'Placement briefing',
+      'Interview follow-up',
+    ]);
+
     notifications.permissionGranted = false;
     final denied = await controller.scheduleTaskReminders();
     expect(denied, isFalse);
-    expect(notifications.scheduled, hasLength(1));
+    expect(notifications.scheduled, hasLength(2));
 
     await database.db.close();
     await directory.delete(recursive: true);
@@ -320,6 +382,29 @@ void main() {
       expect(
         controller.tasks.map((item) => item['series_id']).toSet(),
         hasLength(1),
+      );
+
+      await controller.createTask({
+        'title': 'Default-horizon daily task',
+        'description': '',
+        'item_type': 'TASK',
+        'scheduled_date': controller.key(start),
+        'all_day': 1,
+        'start_time': null,
+        'priority': 'LOW',
+        'deadline': null,
+        'estimated_minutes': 10,
+        'reminder_minutes': null,
+        'recurrence_frequency': 'DAILY',
+        'recurrence_interval': 1,
+        'recurrence_weekdays': '',
+        'recurrence_end_date': null,
+      }, const []);
+      expect(
+        controller.tasks.where(
+          (item) => item['title'] == 'Default-horizon daily task',
+        ),
+        hasLength(120),
       );
 
       await database.db.close();

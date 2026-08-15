@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../state/tracker_controller.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
+import '../widgets/quick_capture.dart';
 
 class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key, required this.controller});
@@ -344,6 +345,7 @@ class _TodayScreenState extends State<TodayScreen> {
                   ),
                   PopupMenuButton<String>(
                     onSelected: (v) {
+                      if (v == 'edit') _editTask(context, task);
                       if (v == 'archive') c.archiveTask(task['id'] as int);
                       if (v == 'skip') {
                         c.resolveTask(
@@ -357,6 +359,7 @@ class _TodayScreenState extends State<TodayScreen> {
                       }
                     },
                     itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
                       PopupMenuItem(
                         value: 'skip',
                         child: Text('Skip intentionally'),
@@ -417,5 +420,16 @@ class _TodayScreenState extends State<TodayScreen> {
         ],
       ),
     ).whenComplete(reason.dispose);
+  }
+
+  void _editTask(BuildContext context, Map<String, Object?> task) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          QuickCapture(controller: widget.controller, existingTask: task),
+    );
   }
 }

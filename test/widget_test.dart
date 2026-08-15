@@ -252,7 +252,9 @@ void main() {
     );
     final verticalScroll = find.byWidgetPredicate(
       (widget) =>
-          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+          widget is Scrollable &&
+          widget.axisDirection == AxisDirection.down &&
+          widget.restorationId != 'editable',
     );
     await tester.scrollUntilVisible(
       find.text('Save to TRACKER'),
@@ -262,6 +264,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Save to TRACKER'), findsOneWidget);
+    expect(find.text('Medium priority'), findsOneWidget);
   });
 
   testWidgets('every planning studio tab supports narrow large text', (
@@ -302,6 +305,65 @@ void main() {
       expect(tester.takeException(), isNull, reason: entry.key);
       expect(find.text(entry.value), findsOneWidget);
     }
+  });
+
+  testWidgets('task editor restores saved fields and checklist', (
+    tester,
+  ) async {
+    final controller = TrackerController(
+      TrackerDatabase(),
+      NotificationService(),
+    );
+    final task = <String, Object?>{
+      'id': 7,
+      'title': 'Placement report',
+      'description': 'Use the final evidence.',
+      'item_type': 'TASK',
+      'scheduled_date': controller.todayKey,
+      'all_day': 0,
+      'start_time': null,
+      'priority': 'CRITICAL',
+      'deadline': '17:30',
+      'estimated_minutes': 35,
+      'reminder_minutes': null,
+      'recurrence_frequency': 'NONE',
+      'recurrence_interval': 1,
+      'recurrence_weekdays': '',
+      'recurrence_end_date': null,
+      'status': 'TODAY',
+    };
+    controller.tasks = [task];
+    controller.subtasks = [
+      {'id': 1, 'task_id': 7, 'title': 'Final review', 'done': 0},
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: TrackerTheme.light,
+        home: Scaffold(
+          body: QuickCapture(controller: controller, existingTask: task),
+        ),
+      ),
+    );
+
+    expect(find.text('Refine the plan.'), findsOneWidget);
+    expect(find.text('Placement report'), findsOneWidget);
+    expect(find.text('Use the final evidence.'), findsOneWidget);
+    final verticalScroll = find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable &&
+          widget.axisDirection == AxisDirection.down &&
+          widget.restorationId != 'editable',
+    );
+    await tester.scrollUntilVisible(
+      find.text('Save changes'),
+      420,
+      scrollable: verticalScroll,
+    );
+    expect(find.text('Critical priority'), findsOneWidget);
+    expect(find.text('Final review'), findsOneWidget);
+    expect(find.text('Save changes'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('onboarding, lock, failed login, and unlock work offline', (
