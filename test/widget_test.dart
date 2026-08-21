@@ -8,6 +8,7 @@ import 'package:tracker/ui/app_shell.dart';
 import 'package:tracker/ui/auth_screen.dart';
 import 'package:tracker/ui/screens/insights_screen.dart';
 import 'package:tracker/ui/screens/plan_screen.dart';
+import 'package:tracker/ui/screens/today_screen.dart';
 import 'package:tracker/ui/widgets/motion.dart';
 import 'package:tracker/ui/widgets/quick_capture.dart';
 
@@ -57,6 +58,76 @@ void main() {
     expect(find.text('Finish report'), findsOneWidget);
     expect(find.text('✓ COMPLETE'), findsOneWidget);
     expect(find.byKey(const ValueKey('celebration-particles')), findsNothing);
+  });
+
+  testWidgets('100 percent stays centered inside the daily score ring', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final controller = TrackerController(
+      TrackerDatabase(),
+      NotificationService(),
+    );
+    controller.tasks = [
+      {
+        'id': 1,
+        'title': 'Finished task',
+        'scheduled_date': controller.todayKey,
+        'status': 'COMPLETED',
+        'item_type': 'TASK',
+        'all_day': 1,
+        'estimated_minutes': 20,
+      },
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: TrackerTheme.light,
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 800),
+            textScaler: TextScaler.linear(2),
+            disableAnimations: true,
+          ),
+          child: Scaffold(body: TodayScreen(controller: controller)),
+        ),
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('daily-score-ring')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('100%'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('daily-score-label-box'))),
+      const Size.square(40),
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('daily-score-ring'))),
+      const Size.square(92),
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('daily-score-progress-ring'))),
+      const Size.square(92),
+    );
+    final labelBox = tester.getRect(
+      find.byKey(const ValueKey('daily-score-label-box')),
+    );
+    final label = tester.getRect(
+      find.byKey(const ValueKey('daily-score-label')),
+    );
+    expect(label.left, greaterThanOrEqualTo(labelBox.left));
+    expect(label.top, greaterThanOrEqualTo(labelBox.top));
+    expect(label.right, lessThanOrEqualTo(labelBox.right));
+    expect(label.bottom, lessThanOrEqualTo(labelBox.bottom));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('spring action remains usable when animation is disabled', (

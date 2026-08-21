@@ -85,40 +85,49 @@ class _TodayScreenState extends State<TodayScreen> {
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      SizedBox.square(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final scoreRing = SizedBox.square(
+                        key: const ValueKey('daily-score-ring'),
                         dimension: 92,
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: c.dailyScore / 100),
-                              duration: MediaQuery.disableAnimationsOf(context)
-                                  ? Duration.zero
-                                  : const Duration(milliseconds: 850),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, value, _) =>
-                                  CircularProgressIndicator(
-                                    value: value,
-                                    strokeWidth: 9,
-                                    backgroundColor: Theme.of(
-                                      context,
-                                    ).dividerColor,
-                                    color: TrackerColors.gold,
-                                  ),
+                            Positioned.fill(
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0, end: c.dailyScore / 100),
+                                duration:
+                                    MediaQuery.disableAnimationsOf(context)
+                                    ? Duration.zero
+                                    : const Duration(milliseconds: 850),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, value, _) =>
+                                    CircularProgressIndicator(
+                                      key: const ValueKey(
+                                        'daily-score-progress-ring',
+                                      ),
+                                      value: value,
+                                      strokeWidth: 9,
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).dividerColor,
+                                      color: TrackerColors.gold,
+                                    ),
+                              ),
                             ),
                             SizedBox.square(
-                              dimension: 50,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
+                              key: const ValueKey('daily-score-label-box'),
+                              dimension: 40,
+                              child: Center(
                                 child: Text(
+                                  key: const ValueKey('daily-score-label'),
                                   '${c.dailyScore}%',
                                   maxLines: 1,
+                                  textScaler: TextScaler.noScaling,
                                   style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(
                                         fontFamily: 'serif',
-                                        fontSize: 18,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w700,
                                       ),
                                 ),
@@ -126,31 +135,51 @@ class _TodayScreenState extends State<TodayScreen> {
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        child: Column(
+                      );
+                      final scoreDetails = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'DAILY SCORE',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: TrackerColors.gold),
+                          ),
+                          const SizedBox(height: 7),
+                          Text(
+                            '${c.completedCount} of ${c.activePlannedCount}',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text('Intentional recovery days are excluded.'),
+                        ],
+                      );
+                      final textScale = MediaQuery.textScalerOf(
+                        context,
+                      ).scale(1);
+                      final useVerticalLayout =
+                          constraints.maxWidth < 320 || textScale >= 1.6;
+                      if (useVerticalLayout) {
+                        return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'DAILY SCORE',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: TrackerColors.gold),
+                            Align(
+                              alignment: Alignment.center,
+                              child: scoreRing,
                             ),
-                            const SizedBox(height: 7),
-                            Text(
-                              '${c.completedCount} of ${c.activePlannedCount}',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Intentional recovery days are excluded.',
-                            ),
+                            const SizedBox(height: 18),
+                            scoreDetails,
                           ],
-                        ),
-                      ),
-                    ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          scoreRing,
+                          const SizedBox(width: 18),
+                          Expanded(child: scoreDetails),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),

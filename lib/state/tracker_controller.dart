@@ -12,9 +12,15 @@ import '../data/tracker_database.dart';
 import '../services/notification_service.dart';
 
 class TrackerController extends ChangeNotifier {
-  TrackerController(this.database, this.notifications);
+  TrackerController(
+    this.database,
+    this.notifications, {
+    DateTime Function()? nowProvider,
+  }) : _nowProvider = nowProvider ?? DateTime.now,
+       selectedDate = (nowProvider ?? DateTime.now)();
   final TrackerDatabase database;
   final NotificationService notifications;
+  final DateTime Function() _nowProvider;
   late SharedPreferences preferences;
   bool ready = false;
   bool initializationFailed = false;
@@ -33,12 +39,13 @@ class TrackerController extends ChangeNotifier {
   List<Map<String, Object?>> goals = [];
   List<Map<String, Object?>> milestones = [];
   List<Map<String, Object?>> weeklyReviews = [];
-  DateTime selectedDate = DateTime.now();
+  DateTime selectedDate;
   String? _lastSmartReminderFingerprint;
+  String? _preparedDayKey;
 
   String key(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
-  String get todayKey => key(DateTime.now());
-  String _now() => DateTime.now().toIso8601String();
+  String get todayKey => key(_nowProvider());
+  String _now() => _nowProvider().toIso8601String();
 
   Future<void> initialize() async {
     preferences = await SharedPreferences.getInstance();
@@ -163,8 +170,15 @@ class TrackerController extends ChangeNotifier {
     goals = rows[7];
     milestones = rows[8];
     weeklyReviews = rows[9];
+    _preparedDayKey = todayKey;
     if (smartRemindersEnabled) await _syncSmartDayRemindersIfChanged();
     notifyListeners();
+  }
+
+  Future<void> refreshIfDayChanged() async {
+    if (!ready || profile == null || !unlocked) return;
+    if (_preparedDayKey == todayKey) return;
+    await refresh();
   }
 
   String _smartReminderFingerprint() => jsonEncode([
@@ -205,35 +219,49 @@ class TrackerController extends ChangeNotifier {
   }
 
   Future<void> _prepareToday() async {
+    final today = todayKey;
+    await database.db.update(
+      'tasks',
+      {
+        'scheduled_date': today,
+        'status': 'TODAY',
+        'outcome': 'RESCHEDULED',
+        'resolved_at': _now(),
+      },
+      where:
+          "scheduled_date < ? AND item_type = 'TASK' AND status IN ('TODAY','SCHEDULED','PENDING')",
+      whereArgs: [today],
+    );
     await database.db.update(
       'tasks',
       {'status': 'PENDING'},
-      where: "scheduled_date < ? AND status IN ('TODAY','SCHEDULED')",
-      whereArgs: [todayKey],
+      where:
+          "scheduled_date < ? AND item_type != 'TASK' AND status IN ('TODAY','SCHEDULED')",
+      whereArgs: [today],
     );
     await database.db.update(
       'tasks',
       {'status': 'TODAY'},
       where: "scheduled_date = ? AND status = 'SCHEDULED'",
-      whereArgs: [todayKey],
+      whereArgs: [today],
     );
     await database.db.update(
       'routines',
       {'status': 'EXPIRED'},
       where: "end_date IS NOT NULL AND end_date < ? AND status = 'ACTIVE'",
-      whereArgs: [todayKey],
+      whereArgs: [today],
     );
     final active = await database.rows(
       'routines',
       where:
           "status = 'ACTIVE' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?) AND (paused_until IS NULL OR paused_until < ?)",
-      whereArgs: [todayKey, todayKey, todayKey],
+      whereArgs: [today, today, today],
     );
     for (final routine in active) {
-      if (await _isRoutineDue(routine, DateTime.now())) {
+      if (await _isRoutineDue(routine, _nowProvider())) {
         await database.db.insert('routine_records', {
           'routine_id': routine['id'],
-          'date': todayKey,
+          'date': today,
           'target_snapshot': routine['target_quantity'],
           'completed_quantity': 0,
           'completed': 0,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../state/tracker_controller.dart';
@@ -10,9 +11,42 @@ import 'screens/routines_screen.dart';
 import 'screens/today_screen.dart';
 import 'widgets/quick_capture.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.controller});
   final TrackerController controller;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
+  Timer? _dayChangeTimer;
+
+  TrackerController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _dayChangeTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => controller.refreshIfDayChanged(),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      controller.refreshIfDayChanged();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _dayChangeTimer?.cancel();
+    super.dispose();
+  }
 
   static const destinations = [
     (Icons.home_outlined, Icons.home_rounded, 'Overview'),

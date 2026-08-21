@@ -68,7 +68,8 @@ class _PageIntroState extends State<PageIntro>
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 430;
+          final textScale = MediaQuery.textScalerOf(context).scale(1);
+          final compact = constraints.maxWidth / textScale < 430;
           final text = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

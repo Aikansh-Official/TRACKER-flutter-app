@@ -341,6 +341,81 @@ void main() {
     await directory.delete(recursive: true);
   });
 
+  test('unfinished tasks roll forward when the calendar day changes', () async {
+    SharedPreferences.setMockInitialValues({});
+    final directory = await Directory.systemTemp.createTemp('tracker-test-');
+    final database = TrackerDatabase(
+      factory: databaseFactoryFfi,
+      databasePath: '${directory.path}${Platform.pathSeparator}tracker.db',
+    );
+    await database.open();
+    var clock = DateTime(2026, 8, 15, 23, 58);
+    final controller = TrackerController(
+      database,
+      NotificationService(),
+      nowProvider: () => clock,
+    );
+    await controller.initialize();
+    await controller.createProfile(
+      'Aikansh',
+      'aikansh@example.com',
+      'strong-pass',
+    );
+
+    Future<void> createItem(String title, String type) =>
+        controller.createTask({
+          'title': title,
+          'description': '',
+          'item_type': type,
+          'scheduled_date': '2026-08-15',
+          'all_day': 1,
+          'start_time': null,
+          'priority': 'MEDIUM',
+          'deadline': null,
+          'estimated_minutes': 30,
+          'reminder_minutes': null,
+          'recurrence_frequency': 'NONE',
+          'recurrence_interval': 1,
+          'recurrence_weekdays': '',
+          'recurrence_end_date': null,
+        }, const []);
+
+    await createItem('Finish portfolio copy', 'TASK');
+    await createItem('Past university event', 'EVENT');
+    clock = DateTime(2026, 8, 16, 0, 1);
+    await controller.refreshIfDayChanged();
+
+    final rolledTask = controller.tasks.singleWhere(
+      (item) => item['title'] == 'Finish portfolio copy',
+    );
+    expect(rolledTask['original_date'], '2026-08-15');
+    expect(rolledTask['scheduled_date'], '2026-08-16');
+    expect(rolledTask['status'], 'TODAY');
+    expect(rolledTask['outcome'], 'RESCHEDULED');
+    expect(
+      controller.todayTasks.map((item) => item['id']),
+      contains(rolledTask['id']),
+    );
+
+    final pastEvent = controller.tasks.singleWhere(
+      (item) => item['title'] == 'Past university event',
+    );
+    expect(pastEvent['scheduled_date'], '2026-08-15');
+    expect(pastEvent['status'], 'PENDING');
+
+    final resolvedAt = rolledTask['resolved_at'];
+    await controller.refreshIfDayChanged();
+    expect(
+      controller.tasks.singleWhere(
+        (item) => item['title'] == 'Finish portfolio copy',
+      )['resolved_at'],
+      resolvedAt,
+    );
+
+    await database.db.close();
+    await directory.delete(recursive: true);
+  });
+
   test(
     'recurring tasks create dated occurrences only through their horizon',
     () async {
