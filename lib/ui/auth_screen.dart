@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
 import '../state/tracker_controller.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -52,186 +51,196 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFF7F5F3),
-    body: SafeArea(
-      child: LayoutBuilder(
-        builder: (context, c) => SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: c.maxHeight),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(28, 38, 28, 34),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF5541B6), Color(0xFF7D6EE5)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final muted = theme.textTheme.bodyMedium?.color?.withValues(alpha: .72);
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, c) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: c.maxHeight),
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(28, 38, 28, 34),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF5541B6), Color(0xFF7D6EE5)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(42),
+                        bottomRight: Radius.circular(42),
+                      ),
                     ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(42),
-                      bottomRight: Radius.circular(42),
-                    ),
+                    child: const _AuthHero(),
                   ),
-                  child: const _AuthHero(),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 470),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'WELCOME TO TRACKER',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: TrackerColors.gold),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          login ? 'Welcome back' : 'Start your journey',
-                          style: Theme.of(context).textTheme.headlineLarge
-                              ?.copyWith(color: TrackerColors.ink),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          login
-                              ? 'Unlock your private workspace.'
-                              : 'Create an offline profile. Nothing leaves your phone.',
-                          style: const TextStyle(color: TrackerColors.muted),
-                        ),
-                        const SizedBox(height: 28),
-                        if (!login) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 470),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'WELCOME TO TRACKER',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            login ? 'Welcome back' : 'Start your journey',
+                            style: theme.textTheme.headlineLarge?.copyWith(
+                              color: colors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            login
+                                ? 'Unlock your private workspace.'
+                                : 'Create an offline profile. Nothing leaves your phone.',
+                            style: TextStyle(color: muted),
+                          ),
+                          const SizedBox(height: 28),
+                          if (!login) ...[
+                            TextField(
+                              controller: name,
+                              textCapitalization: TextCapitalization.words,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.name],
+                              style: TextStyle(color: colors.onSurface),
+                              decoration: const InputDecoration(
+                                labelText: 'Name',
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
                           TextField(
-                            controller: name,
-                            textCapitalization: TextCapitalization.words,
+                            controller: email,
+                            keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.name],
-                            style: const TextStyle(color: TrackerColors.ink),
+                            autofillHints: const [AutofillHints.email],
+                            autocorrect: false,
+                            style: TextStyle(color: colors.onSurface),
                             decoration: const InputDecoration(
-                              labelText: 'Name',
+                              labelText: 'Email',
                             ),
                           ),
                           const SizedBox(height: 14),
-                        ],
-                        TextField(
-                          controller: email,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.email],
-                          autocorrect: false,
-                          style: const TextStyle(color: TrackerColors.ink),
-                          decoration: const InputDecoration(labelText: 'Email'),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: password,
-                          obscureText: obscure,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: [
-                            login
-                                ? AutofillHints.password
-                                : AutofillHints.newPassword,
-                          ],
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          style: const TextStyle(color: TrackerColors.ink),
-                          onSubmitted: (_) => submit(),
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            hintText: 'At least 8 characters',
-                            suffixIcon: IconButton(
-                              onPressed: () =>
-                                  setState(() => obscure = !obscure),
-                              icon: Icon(
-                                obscure
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
+                          TextField(
+                            controller: password,
+                            obscureText: obscure,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: [
+                              login
+                                  ? AutofillHints.password
+                                  : AutofillHints.newPassword,
+                            ],
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            style: TextStyle(color: colors.onSurface),
+                            onSubmitted: (_) => submit(),
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              hintText: 'At least 8 characters',
+                              suffixIcon: IconButton(
+                                onPressed: () =>
+                                    setState(() => obscure = !obscure),
+                                icon: Icon(
+                                  obscure
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        if (error != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 14),
-                            child: Semantics(
-                              liveRegion: true,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFECE8),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(13),
-                                  child: Text(
-                                    error!,
-                                    style: const TextStyle(
-                                      color: Color(0xFFB74432),
+                          if (error != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: Semantics(
+                                liveRegion: true,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: colors.errorContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(13),
+                                    child: Text(
+                                      error!,
+                                      style: TextStyle(
+                                        color: colors.onErrorContainer,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        const SizedBox(height: 20),
-                        FilledButton(
-                          onPressed: busy ? null : submit,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: TrackerColors.violet,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.all(17),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                          const SizedBox(height: 20),
+                          FilledButton(
+                            onPressed: busy ? null : submit,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: colors.secondary,
+                              foregroundColor: colors.onSecondary,
+                              padding: const EdgeInsets.all(17),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
-                          ),
-                          child: busy
-                              ? const SizedBox.square(
-                                  dimension: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                            child: busy
+                                ? SizedBox.square(
+                                    dimension: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: colors.onSecondary,
+                                    ),
+                                  )
+                                : Text(
+                                    login
+                                        ? 'Unlock TRACKER →'
+                                        : 'Create my profile →',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                )
-                              : Text(
-                                  login
-                                      ? 'Unlock TRACKER →'
-                                      : 'Create my profile →',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                        ),
-                        if (widget.hasProfile)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 10),
-                            child: Text(
-                              'One private local profile lives on this device.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: TrackerColors.muted),
-                            ),
-                          )
-                        else
-                          TextButton(
-                            onPressed: () => setState(() => login = !login),
-                            child: Text(
-                              login
-                                  ? 'Create your local profile instead'
-                                  : 'Already have a profile? Sign in',
-                            ),
                           ),
-                      ],
+                          if (widget.hasProfile)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: Text(
+                                'One private local profile lives on this device.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: muted),
+                              ),
+                            )
+                          else
+                            TextButton(
+                              onPressed: () => setState(() => login = !login),
+                              child: Text(
+                                login
+                                    ? 'Create your local profile instead'
+                                    : 'Already have a profile? Sign in',
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _AuthHero extends StatefulWidget {

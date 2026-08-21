@@ -159,6 +159,21 @@ Latest verified gate on 2026-08-21:
 - Device semantics reported `0%` and `100%`; logcat showed no RenderFlex,
   Flutter error, or fatal exception during the tested flow.
 
+## Latest QA follow-up
+
+- A saved dark-mode preference now applies on the locked authentication screen,
+  rather than forcing that screen into light mode. Auth text, fields, errors,
+  helper text, and the primary action resolve their colours from the active
+  Material theme.
+- The rollover regression test now includes a previous-day `TASK` that was
+  already `PENDING`; it is verified to carry to the current date as `TODAY` /
+  `RESCHEDULED`. Past events remain historical `PENDING` items.
+- `docs/offline-sync-and-ai-capture-plan.md` records the approved direction for
+  future work: SQLite remains local-first, with stable sync IDs, revisions, an
+  outbox, explicit account linking, versioned pull/push APIs, conflict review,
+  and an opt-in AI capture confirmation flow. Do not implement a cloud sync by
+  directly pairing SQLite integer IDs with MongoDB IDs.
+
 ## Git rules
 
 - Never reset or overwrite unrelated user changes.

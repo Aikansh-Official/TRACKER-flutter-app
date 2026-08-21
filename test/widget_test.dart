@@ -6,6 +6,7 @@ import 'package:tracker/services/notification_service.dart';
 import 'package:tracker/state/tracker_controller.dart';
 import 'package:tracker/ui/app_shell.dart';
 import 'package:tracker/ui/auth_screen.dart';
+import 'package:tracker/ui/tracker_app.dart';
 import 'package:tracker/ui/screens/insights_screen.dart';
 import 'package:tracker/ui/screens/plan_screen.dart';
 import 'package:tracker/ui/screens/today_screen.dart';
@@ -40,6 +41,32 @@ void main() {
   test('TRACKER palette keeps gold distinct from paper and graphite', () {
     expect(TrackerColors.gold, isNot(TrackerColors.paper));
     expect(TrackerColors.brightGold, isNot(TrackerColors.graphite));
+  });
+
+  testWidgets('locked workspace keeps the saved dark theme on auth', (
+    tester,
+  ) async {
+    final controller = _AuthFlowController()
+      ..profile = {'name': 'Aikansh', 'email': 'aikansh@example.com'}
+      ..darkMode = true;
+
+    await tester.pumpWidget(
+      TrackerApp(
+        controller: controller,
+        lightTheme: TrackerTheme.light,
+        darkTheme: TrackerTheme.dark,
+      ),
+    );
+
+    expect(find.byType(AuthScreen), findsOneWidget);
+    expect(
+      Theme.of(tester.element(find.byType(AuthScreen))).brightness,
+      Brightness.dark,
+    );
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold).first).backgroundColor,
+      TrackerTheme.dark.scaffoldBackgroundColor,
+    );
   });
 
   testWidgets('celebrations become calm and readable with reduced motion', (

@@ -22,9 +22,7 @@ class TrackerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: controller.darkMode && controller.unlocked
-          ? ThemeMode.dark
-          : ThemeMode.light,
+      themeMode: controller.darkMode ? ThemeMode.dark : ThemeMode.light,
       home: controller.initializationFailed
           ? const _InitializationFailure()
           : !controller.ready

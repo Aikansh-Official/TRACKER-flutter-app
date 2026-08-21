@@ -381,7 +381,14 @@ void main() {
         }, const []);
 
     await createItem('Finish portfolio copy', 'TASK');
+    await createItem('Already pending task', 'TASK');
     await createItem('Past university event', 'EVENT');
+    final pendingTaskId =
+        controller.tasks.singleWhere(
+              (item) => item['title'] == 'Already pending task',
+            )['id']
+            as int;
+    await controller.updateTask(pendingTaskId, {'status': 'PENDING'});
     clock = DateTime(2026, 8, 16, 0, 1);
     await controller.refreshIfDayChanged();
 
@@ -396,6 +403,13 @@ void main() {
       controller.todayTasks.map((item) => item['id']),
       contains(rolledTask['id']),
     );
+
+    final carriedPendingTask = controller.tasks.singleWhere(
+      (item) => item['title'] == 'Already pending task',
+    );
+    expect(carriedPendingTask['scheduled_date'], '2026-08-16');
+    expect(carriedPendingTask['status'], 'TODAY');
+    expect(carriedPendingTask['outcome'], 'RESCHEDULED');
 
     final pastEvent = controller.tasks.singleWhere(
       (item) => item['title'] == 'Past university event',
