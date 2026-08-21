@@ -174,6 +174,22 @@ Latest verified gate on 2026-08-21:
   and an opt-in AI capture confirmation flow. Do not implement a cloud sync by
   directly pairing SQLite integer IDs with MongoDB IDs.
 
+## Normal-user UX milestone
+
+- The app now opens on **Today**, with four primary Android destinations:
+  Today, Plan, Calendar, and More. Overview, Routines, Mood, Insights, and
+  Reminders are grouped in a labelled, scrollable More sheet rather than a
+  crowded seven-item dock.
+- The main creation action is an extended **Add task** FAB. An empty day shows
+  one clear start card instead of a zero-score dashboard.
+- New Quick Capture uses progressive disclosure: task/event, title, optional
+  details, and date appear first; repeat, time, reminder, priority, estimate,
+  and checklist settings are behind **More details**. Edit mode keeps existing
+  details available.
+- Full gate for this milestone: 21 tests passing, `flutter analyze` clean,
+  debug APK built and installed on the Pixel 8a emulator. Device screenshots:
+  `build/qa-normal-user-home.png` and `build/qa-simple-capture.png`.
+
 ## Git rules
 
 - Never reset or overwrite unrelated user changes.

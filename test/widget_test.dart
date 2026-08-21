@@ -43,6 +43,37 @@ void main() {
     expect(TrackerColors.brightGold, isNot(TrackerColors.graphite));
   });
 
+  testWidgets('normal-user navigation starts on Today and keeps four choices', (
+    tester,
+  ) async {
+    final controller = TrackerController(
+      TrackerDatabase(),
+      NotificationService(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: TrackerTheme.light,
+        home: AppShell(controller: controller),
+      ),
+    );
+
+    expect(controller.page, 2);
+    expect(find.text('Today'), findsWidgets);
+    expect(find.text('Nothing planned yet.'), findsOneWidget);
+    expect(find.text('Plan'), findsWidgets);
+    expect(find.text('Calendar'), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
+    expect(find.byTooltip('Add task or event'), findsOneWidget);
+
+    await tester.tap(find.text('More'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Everything else, when you need it.'), findsOneWidget);
+    expect(find.text('Routines'), findsOneWidget);
+    expect(find.text('Mood'), findsWidgets);
+    expect(find.text('Insights'), findsOneWidget);
+  });
+
   testWidgets('locked workspace keeps the saved dark theme on auth', (
     tester,
   ) async {
@@ -208,7 +239,7 @@ void main() {
     const headings = [
       'Your day, without the noise.',
       'Plan with your real capacity.',
-      'Make today count.',
+      'Today',
       'Promises worth repeating.',
       'Notice the weather within.',
       'Time, given a shape.',
@@ -218,7 +249,10 @@ void main() {
       controller.navigate(page);
       await tester.pump();
       expect(tester.takeException(), isNull, reason: 'destination $page');
-      expect(find.text(headings[page]), findsOneWidget);
+      expect(
+        find.text(headings[page]),
+        page == 2 ? findsWidgets : findsOneWidget,
+      );
     }
   });
 
@@ -271,7 +305,7 @@ void main() {
     );
   });
 
-  testWidgets('reminder center remains scrollable with large text', (
+  testWidgets('reminders remain reachable through More with large text', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 800);
@@ -282,25 +316,6 @@ void main() {
       TrackerDatabase(),
       NotificationService(),
     );
-    final reminderTime = DateTime.now().add(const Duration(hours: 2));
-    controller.tasks = [
-      {
-        'id': 1,
-        'title': 'Placement briefing',
-        'description': '',
-        'item_type': 'EVENT',
-        'scheduled_date': controller.key(reminderTime),
-        'all_day': 0,
-        'start_time':
-            '${reminderTime.hour.toString().padLeft(2, '0')}:${reminderTime.minute.toString().padLeft(2, '0')}',
-        'priority': 'HIGH',
-        'deadline': null,
-        'estimated_minutes': 45,
-        'reminder_minutes': 10,
-        'status': 'SCHEDULED',
-      },
-    ];
-
     await tester.pumpWidget(
       MaterialApp(
         theme: TrackerTheme.dark,
@@ -314,12 +329,12 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.byTooltip('Reminder center'));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('More'));
+    await tester.pump(const Duration(milliseconds: 250));
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Placement briefing'), findsOneWidget);
-    expect(find.text('Smart day reminders'), findsOneWidget);
+    expect(find.text('Reminders'), findsOneWidget);
+    expect(find.text('Manage task and day reminders.'), findsOneWidget);
   });
 
   testWidgets('quick capture stays usable above a large keyboard', (
@@ -354,6 +369,14 @@ void main() {
           widget.axisDirection == AxisDirection.down &&
           widget.restorationId != 'editable',
     );
+    await tester.scrollUntilVisible(
+      find.text('More details'),
+      240,
+      scrollable: verticalScroll,
+    );
+    expect(find.text('More details'), findsOneWidget);
+    await tester.tap(find.text('More details'));
+    await tester.pump();
     await tester.scrollUntilVisible(
       find.text('Save to TRACKER'),
       420,

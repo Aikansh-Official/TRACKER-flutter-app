@@ -25,6 +25,7 @@ class _QuickCaptureState extends State<QuickCapture> {
   TimeOfDay? start, deadline;
   int? reminder;
   bool saving = false;
+  bool showDetails = false;
   String? error;
 
   bool get editing => widget.existingTask != null;
@@ -34,6 +35,7 @@ class _QuickCaptureState extends State<QuickCapture> {
     super.initState();
     final item = widget.existingTask;
     if (item == null) return;
+    showDetails = true;
     title.text = item['title'] as String;
     description.text = item['description'] as String? ?? '';
     checklist.text = widget.controller
@@ -144,8 +146,8 @@ class _QuickCaptureState extends State<QuickCapture> {
 
   @override
   Widget build(BuildContext context) => DraggableScrollableSheet(
-    initialChildSize: .94,
-    minChildSize: .6,
+    initialChildSize: .76,
+    minChildSize: .5,
     maxChildSize: .98,
     builder: (context, scroll) => Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -251,188 +253,204 @@ class _QuickCaptureState extends State<QuickCapture> {
               if (picked != null) setState(() => date = picked);
             },
           ),
-          if (!editing)
-            DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: repeat,
-              decoration: const InputDecoration(labelText: 'Repeat'),
-              items: const [
-                DropdownMenuItem(value: 'NONE', child: Text('Does not repeat')),
-                DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
-                DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
-                DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
-              ],
-              onChanged: (v) => setState(() => repeat = v!),
+          if (!editing && !showDetails)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => showDetails = true),
+                icon: const Icon(Icons.tune_rounded),
+                label: const Text('More details'),
+              ),
             ),
-          if (!editing && repeat != 'NONE') ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Every $interval ${repeat.toLowerCase()} interval${interval == 1 ? '' : 's'}',
+          if (showDetails || editing) ...[
+            if (!editing)
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: repeat,
+                decoration: const InputDecoration(labelText: 'Repeat'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'NONE',
+                    child: Text('Does not repeat'),
                   ),
-                ),
-                IconButton(
-                  onPressed: interval > 1
-                      ? () => setState(() => interval--)
-                      : null,
-                  icon: const Icon(Icons.remove_circle_outline),
-                ),
-                IconButton(
-                  onPressed: interval < 30
-                      ? () => setState(() => interval++)
-                      : null,
-                  icon: const Icon(Icons.add_circle_outline),
-                ),
-              ],
-            ),
-            if (repeat == 'WEEKLY')
-              Wrap(
-                spacing: 6,
+                  DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
+                  DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
+                  DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
+                ],
+                onChanged: (v) => setState(() => repeat = v!),
+              ),
+            if (!editing && repeat != 'NONE') ...[
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  for (final d in const [
-                    (0, 'S'),
-                    (1, 'M'),
-                    (2, 'T'),
-                    (3, 'W'),
-                    (4, 'T'),
-                    (5, 'F'),
-                    (6, 'S'),
-                  ])
-                    ChoiceChip(
-                      label: Text(d.$2),
-                      selected: weekdays.contains(d.$1),
-                      onSelected: (on) => setState(
-                        () => on ? weekdays.add(d.$1) : weekdays.remove(d.$1),
-                      ),
+                  Expanded(
+                    child: Text(
+                      'Every $interval ${repeat.toLowerCase()} interval${interval == 1 ? '' : 's'}',
                     ),
+                  ),
+                  IconButton(
+                    onPressed: interval > 1
+                        ? () => setState(() => interval--)
+                        : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  IconButton(
+                    onPressed: interval < 30
+                        ? () => setState(() => interval++)
+                        : null,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
                 ],
               ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Repeat until'),
-              subtitle: Text(
-                repeatUntil == null
-                    ? 'Up to one year · maximum 120 occurrences'
-                    : DateFormat('d MMM y').format(repeatUntil!),
+              if (repeat == 'WEEKLY')
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final d in const [
+                      (0, 'S'),
+                      (1, 'M'),
+                      (2, 'T'),
+                      (3, 'W'),
+                      (4, 'T'),
+                      (5, 'F'),
+                      (6, 'S'),
+                    ])
+                      ChoiceChip(
+                        label: Text(d.$2),
+                        selected: weekdays.contains(d.$1),
+                        onSelected: (on) => setState(
+                          () => on ? weekdays.add(d.$1) : weekdays.remove(d.$1),
+                        ),
+                      ),
+                  ],
+                ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Repeat until'),
+                subtitle: Text(
+                  repeatUntil == null
+                      ? 'Up to one year · maximum 120 occurrences'
+                      : DateFormat('d MMM y').format(repeatUntil!),
+                ),
+                trailing: const Icon(Icons.event_repeat),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    firstDate: date,
+                    lastDate: DateTime(2100),
+                    initialDate:
+                        repeatUntil ?? date.add(const Duration(days: 30)),
+                  );
+                  if (picked != null) setState(() => repeatUntil = picked);
+                },
               ),
-              trailing: const Icon(Icons.event_repeat),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  firstDate: date,
-                  lastDate: DateTime(2100),
-                  initialDate:
-                      repeatUntil ?? date.add(const Duration(days: 30)),
-                );
-                if (picked != null) setState(() => repeatUntil = picked);
-              },
-            ),
-          ],
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('All day'),
-            subtitle: const Text('Turn off to choose a clock time'),
-            value: allDay,
-            onChanged: (v) => setState(() => allDay = v),
-          ),
-          if (!allDay)
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final value = await showTimePicker(
-                        context: context,
-                        initialTime: start ?? TimeOfDay.now(),
-                      );
-                      if (value != null) setState(() => start = value);
-                    },
-                    icon: const Icon(Icons.schedule),
-                    label: Text(
-                      type == 'EVENT'
-                          ? (start == null ? 'Starts' : start!.format(context))
-                          : 'Optional start',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final value = await showTimePicker(
-                        context: context,
-                        initialTime: deadline ?? TimeOfDay.now(),
-                      );
-                      if (value != null) setState(() => deadline = value);
-                    },
-                    icon: const Icon(Icons.flag_outlined),
-                    label: Text(
-                      deadline == null
-                          ? (type == 'EVENT' ? 'Ends' : 'Deadline')
-                          : deadline!.format(context),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 14),
-          DropdownButtonFormField<int?>(
-            isExpanded: true,
-            initialValue: reminder,
-            decoration: const InputDecoration(labelText: 'Reminder'),
-            items: const [
-              DropdownMenuItem(value: null, child: Text('No reminder')),
-              DropdownMenuItem(value: 0, child: Text('At start / deadline')),
-              DropdownMenuItem(value: 10, child: Text('10 minutes before')),
-              DropdownMenuItem(value: 30, child: Text('30 minutes before')),
-              DropdownMenuItem(value: 60, child: Text('1 hour before')),
-              DropdownMenuItem(value: 1440, child: Text('1 day before')),
             ],
-            onChanged: (v) => setState(() => reminder = v),
-          ),
-          if (type == 'TASK') ...[
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('All day'),
+              subtitle: const Text('Turn off to choose a clock time'),
+              value: allDay,
+              onChanged: (v) => setState(() => allDay = v),
+            ),
+            if (!allDay)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final value = await showTimePicker(
+                          context: context,
+                          initialTime: start ?? TimeOfDay.now(),
+                        );
+                        if (value != null) setState(() => start = value);
+                      },
+                      icon: const Icon(Icons.schedule),
+                      label: Text(
+                        type == 'EVENT'
+                            ? (start == null
+                                  ? 'Starts'
+                                  : start!.format(context))
+                            : 'Optional start',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final value = await showTimePicker(
+                          context: context,
+                          initialTime: deadline ?? TimeOfDay.now(),
+                        );
+                        if (value != null) setState(() => deadline = value);
+                      },
+                      icon: const Icon(Icons.flag_outlined),
+                      label: Text(
+                        deadline == null
+                            ? (type == 'EVENT' ? 'Ends' : 'Deadline')
+                            : deadline!.format(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 14),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<int?>(
               isExpanded: true,
-              initialValue: priority,
-              decoration: const InputDecoration(labelText: 'Priority'),
+              initialValue: reminder,
+              decoration: const InputDecoration(labelText: 'Reminder'),
               items: const [
-                DropdownMenuItem(value: 'LOW', child: Text('Low priority')),
-                DropdownMenuItem(
-                  value: 'MEDIUM',
-                  child: Text('Medium priority'),
-                ),
-                DropdownMenuItem(value: 'HIGH', child: Text('High priority')),
-                DropdownMenuItem(
-                  value: 'CRITICAL',
-                  child: Text('Critical priority'),
-                ),
+                DropdownMenuItem(value: null, child: Text('No reminder')),
+                DropdownMenuItem(value: 0, child: Text('At start / deadline')),
+                DropdownMenuItem(value: 10, child: Text('10 minutes before')),
+                DropdownMenuItem(value: 30, child: Text('30 minutes before')),
+                DropdownMenuItem(value: 60, child: Text('1 hour before')),
+                DropdownMenuItem(value: 1440, child: Text('1 day before')),
               ],
-              onChanged: (value) => setState(() => priority = value!),
+              onChanged: (v) => setState(() => reminder = v),
             ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: estimate,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Estimate (minutes)',
-                helperText: 'Between 5 and 480 minutes',
+            if (type == 'TASK') ...[
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: priority,
+                decoration: const InputDecoration(labelText: 'Priority'),
+                items: const [
+                  DropdownMenuItem(value: 'LOW', child: Text('Low priority')),
+                  DropdownMenuItem(
+                    value: 'MEDIUM',
+                    child: Text('Medium priority'),
+                  ),
+                  DropdownMenuItem(value: 'HIGH', child: Text('High priority')),
+                  DropdownMenuItem(
+                    value: 'CRITICAL',
+                    child: Text('Critical priority'),
+                  ),
+                ],
+                onChanged: (value) => setState(() => priority = value!),
               ),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: checklist,
-              minLines: 3,
-              maxLines: 6,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Checklist',
-                hintText: 'One step per line',
-                helperText: 'Up to 30 subtasks',
+              const SizedBox(height: 14),
+              TextField(
+                controller: estimate,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Estimate (minutes)',
+                  helperText: 'Between 5 and 480 minutes',
+                ),
               ),
-            ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: checklist,
+                minLines: 3,
+                maxLines: 6,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Checklist',
+                  hintText: 'One step per line',
+                  helperText: 'Up to 30 subtasks',
+                ),
+              ),
+            ],
           ],
           if (error != null)
             Padding(

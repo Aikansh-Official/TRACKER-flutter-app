@@ -27,7 +27,9 @@ class TrackerController extends ChangeNotifier {
   bool darkMode = false;
   bool smartRemindersEnabled = false;
   bool unlocked = false;
-  int page = 0;
+  // Start with the decision a person normally came to make: what needs doing
+  // today. The other tools remain available through the app shell.
+  int page = 2;
   Map<String, Object?>? profile;
   List<Map<String, Object?>> routines = [];
   List<Map<String, Object?>> routineRecords = [];

@@ -49,18 +49,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   static const destinations = [
-    (Icons.home_outlined, Icons.home_rounded, 'Overview'),
-    (Icons.auto_awesome_outlined, Icons.auto_awesome, 'Plan'),
-    (Icons.check_circle_outline, Icons.check_circle, 'Today'),
-    (Icons.track_changes_outlined, Icons.track_changes, 'Routines'),
-    (
-      Icons.sentiment_satisfied_alt_outlined,
-      Icons.sentiment_satisfied_alt,
-      'Mood',
-    ),
-    (Icons.calendar_month_outlined, Icons.calendar_month, 'Calendar'),
-    (Icons.insights_outlined, Icons.insights, 'Insights'),
+    (Icons.check_circle_outline, Icons.check_circle, 'Today', 2),
+    (Icons.auto_awesome_outlined, Icons.auto_awesome, 'Plan', 1),
+    (Icons.calendar_month_outlined, Icons.calendar_month, 'Calendar', 5),
   ];
+
+  int get _selectedDestination => switch (controller.page) {
+    2 => 0,
+    1 => 1,
+    5 => 2,
+    _ => 3,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -77,9 +76,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       InsightsScreen(controller: controller),
     ];
     return PopScope(
-      canPop: controller.page == 0,
+      canPop: controller.page == 2,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) controller.navigate(0);
+        if (!didPop) controller.navigate(2);
       },
       child: Scaffold(
         appBar: AppBar(
@@ -125,11 +124,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                     : Icons.dark_mode_outlined,
               ),
             ),
-            IconButton(
-              tooltip: 'Reminder center',
-              onPressed: () => _showReminders(context),
-              icon: const Icon(Icons.notifications_none_rounded),
-            ),
             PopupMenuButton<String>(
               tooltip: 'Workspace menu',
               onSelected: (value) {
@@ -171,32 +165,34 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             children: pages,
           ),
         ),
-        floatingActionButton: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton(
-              heroTag: 'quick-add',
-              tooltip: 'Quick add',
-              onPressed: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                useSafeArea: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => QuickCapture(controller: controller),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              child: const Icon(Icons.add_rounded),
-            ),
-          ],
+        floatingActionButton: FloatingActionButton.extended(
+          heroTag: 'quick-add',
+          tooltip: 'Add task or event',
+          onPressed: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => QuickCapture(controller: controller),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Add task'),
         ),
         bottomNavigationBar: NavigationBar(
           height: 72,
           labelBehavior: compactNavigation
               ? NavigationDestinationLabelBehavior.onlyShowSelected
               : NavigationDestinationLabelBehavior.alwaysShow,
-          selectedIndex: controller.page,
-          onDestinationSelected: controller.navigate,
+          selectedIndex: _selectedDestination,
+          onDestinationSelected: (index) {
+            if (index == destinations.length) {
+              _showMore(context);
+            } else {
+              controller.navigate(destinations[index].$4);
+            }
+          },
           destinations: [
             for (final d in destinations)
               NavigationDestination(
@@ -204,7 +200,94 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 selectedIcon: Icon(d.$2),
                 label: d.$3,
               ),
+            const NavigationDestination(
+              icon: Icon(Icons.grid_view_outlined),
+              selectedIcon: Icon(Icons.grid_view_rounded),
+              label: 'More',
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showMore(BuildContext context) {
+    final tools = [
+      (Icons.home_outlined, 'Overview', 'A simple snapshot of your day.', 0),
+      (
+        Icons.track_changes_outlined,
+        'Routines',
+        'Build habits at your pace.',
+        3,
+      ),
+      (
+        Icons.sentiment_satisfied_alt_outlined,
+        'Mood',
+        'A private wellbeing check-in.',
+        4,
+      ),
+      (
+        Icons.insights_outlined,
+        'Insights',
+        'See patterns from saved history.',
+        6,
+      ),
+    ];
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: .9,
+        minChildSize: .5,
+        maxChildSize: .95,
+        expand: false,
+        builder: (context, scrollController) => SafeArea(
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 2, 20, 24),
+            children: [
+              Text(
+                'MORE TOOLS',
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.labelSmall?.copyWith(color: TrackerColors.gold),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Everything else, when you need it.',
+                style: Theme.of(sheetContext).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 10),
+              for (final tool in tools)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  minVerticalPadding: 8,
+                  leading: CircleAvatar(child: Icon(tool.$1)),
+                  title: Text(tool.$2),
+                  subtitle: Text(tool.$3),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    controller.navigate(tool.$4);
+                  },
+                ),
+              const Divider(height: 24),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(
+                  child: Icon(Icons.notifications_none_rounded),
+                ),
+                title: const Text('Reminders'),
+                subtitle: const Text('Manage task and day reminders.'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showReminders(context);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

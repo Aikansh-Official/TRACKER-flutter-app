@@ -67,130 +67,124 @@ class _TodayScreenState extends State<TodayScreen> {
             children: [
               PageIntro(
                 eyebrow: DateFormat('EEEE, MMMM d').format(now),
-                title: 'Make today count.',
-                subtitle:
-                    'Small promises, kept consistently, become your story.',
-                trailing: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      DateFormat('HH:mm').format(now),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const LiveIndicator(),
-                  ],
-                ),
+                title: 'Today',
+                subtitle: empty
+                    ? 'Add one thing you want to get done.'
+                    : 'Focus on the next small thing.',
               ),
               const SizedBox(height: 22),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final scoreRing = SizedBox.square(
-                        key: const ValueKey('daily-score-ring'),
-                        dimension: 92,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Positioned.fill(
-                              child: TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0, end: c.dailyScore / 100),
-                                duration:
-                                    MediaQuery.disableAnimationsOf(context)
-                                    ? Duration.zero
-                                    : const Duration(milliseconds: 850),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, value, _) =>
-                                    CircularProgressIndicator(
-                                      key: const ValueKey(
-                                        'daily-score-progress-ring',
-                                      ),
-                                      value: value,
-                                      strokeWidth: 9,
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).dividerColor,
-                                      color: TrackerColors.gold,
-                                    ),
-                              ),
-                            ),
-                            SizedBox.square(
-                              key: const ValueKey('daily-score-label-box'),
-                              dimension: 40,
-                              child: Center(
-                                child: Text(
-                                  key: const ValueKey('daily-score-label'),
-                                  '${c.dailyScore}%',
-                                  maxLines: 1,
-                                  textScaler: TextScaler.noScaling,
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        fontFamily: 'serif',
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
+              if (empty)
+                _emptyDayCard(context)
+              else ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final scoreRing = SizedBox.square(
+                          key: const ValueKey('daily-score-ring'),
+                          dimension: 92,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned.fill(
+                                child: TweenAnimationBuilder<double>(
+                                  tween: Tween(
+                                    begin: 0,
+                                    end: c.dailyScore / 100,
+                                  ),
+                                  duration:
+                                      MediaQuery.disableAnimationsOf(context)
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 850),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, value, _) =>
+                                      CircularProgressIndicator(
+                                        key: const ValueKey(
+                                          'daily-score-progress-ring',
+                                        ),
+                                        value: value,
+                                        strokeWidth: 9,
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).dividerColor,
+                                        color: TrackerColors.gold,
                                       ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                      final scoreDetails = Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'DAILY SCORE',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: TrackerColors.gold),
+                              SizedBox.square(
+                                key: const ValueKey('daily-score-label-box'),
+                                dimension: 40,
+                                child: Center(
+                                  child: Text(
+                                    key: const ValueKey('daily-score-label'),
+                                    '${c.dailyScore}%',
+                                    maxLines: 1,
+                                    textScaler: TextScaler.noScaling,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontFamily: 'serif',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 7),
-                          Text(
-                            '${c.completedCount} of ${c.activePlannedCount}',
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text('Intentional recovery days are excluded.'),
-                        ],
-                      );
-                      final textScale = MediaQuery.textScalerOf(
-                        context,
-                      ).scale(1);
-                      final useVerticalLayout =
-                          constraints.maxWidth < 320 || textScale >= 1.6;
-                      if (useVerticalLayout) {
-                        return Column(
+                        );
+                        final scoreDetails = Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Align(
-                              alignment: Alignment.center,
-                              child: scoreRing,
+                            Text(
+                              'DAILY SCORE',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(color: TrackerColors.gold),
                             ),
-                            const SizedBox(height: 18),
-                            scoreDetails,
+                            const SizedBox(height: 7),
+                            Text(
+                              '${c.completedCount} of ${c.activePlannedCount}',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Intentional recovery days are excluded.',
+                            ),
                           ],
                         );
-                      }
-                      return Row(
-                        children: [
-                          scoreRing,
-                          const SizedBox(width: 18),
-                          Expanded(child: scoreDetails),
-                        ],
-                      );
-                    },
+                        final textScale = MediaQuery.textScalerOf(
+                          context,
+                        ).scale(1);
+                        final useVerticalLayout =
+                            constraints.maxWidth < 320 || textScale >= 1.6;
+                        if (useVerticalLayout) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: scoreRing,
+                              ),
+                              const SizedBox(height: 18),
+                              scoreDetails,
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            scoreRing,
+                            const SizedBox(width: 18),
+                            Expanded(child: scoreDetails),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              if (empty)
-                const EmptyCard(
-                  eyebrow: 'A quiet beginning',
-                  title: 'Your day is still unwritten.',
-                  body: 'Use Quick add to give today one clear promise.',
-                )
-              else ...[
+                const SizedBox(height: 18),
                 if (c.todayRoutineRecords.isNotEmpty)
                   Text(
                     'ROUTINES',
@@ -224,6 +218,48 @@ class _TodayScreenState extends State<TodayScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _emptyDayCard(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.add_task_rounded,
+            size: 32,
+            color: TrackerColors.gold,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Nothing planned yet.',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Start small. You can add dates, reminders, and details later.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: () => _openQuickAdd(context),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add a task'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  void _openQuickAdd(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => QuickCapture(controller: widget.controller),
     );
   }
 

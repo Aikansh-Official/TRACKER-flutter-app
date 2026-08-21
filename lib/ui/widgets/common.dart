@@ -10,7 +10,7 @@ class PageIntro extends StatefulWidget {
     required this.title,
     required this.subtitle,
     this.trailing,
-    this.showOrbit = true,
+    this.showOrbit = false,
   });
   final String eyebrow;
   final String title;
@@ -85,7 +85,8 @@ class _PageIntroState extends State<PageIntro>
               Text(
                 widget.title,
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  fontSize: compact ? 34 : 38,
+                  fontSize: compact ? 28 : 31,
+                  height: 1.08,
                 ),
               ),
               const SizedBox(height: 8),
@@ -100,7 +101,7 @@ class _PageIntroState extends State<PageIntro>
           return Stack(
             clipBehavior: Clip.none,
             children: [
-              if (widget.showOrbit)
+              if (widget.showOrbit && !compact)
                 const Positioned(right: -22, top: -28, child: _HeroOrbit()),
               if (compact || widget.trailing == null)
                 Column(
@@ -512,4 +513,4 @@ class SectionCard extends StatelessWidget {
   );
 }
 
-EdgeInsets get pagePadding => const EdgeInsets.fromLTRB(18, 14, 18, 150);
+EdgeInsets get pagePadding => const EdgeInsets.fromLTRB(18, 20, 18, 124);
